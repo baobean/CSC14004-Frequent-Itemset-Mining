@@ -1,0 +1,64 @@
+## --- Core LaTeX Auxiliary Files ---
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.synctex(busy)
+
+## --- Bibliography Files (BibTeX/Biber) ---
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+
+## --- Package Specific Files ---
+# listings/minted (code highlighting)
+_minted*
+*.pyg
+# glossaries/indexes
+*.glg
+*.glo
+*.gls
+*.ist
+*.idx
+*.ilg
+*.ind
+# amsmath
+*.nav
+*.snm
+*.vrb
+
+## --- Build Directory ---
+# If you configured VS Code to put files in a "build" or "out" folder
+build/
+out/
+
+## --- Editor & OS Specific ---
+.vscode/
+.history/
+.DS_Store
+Thumbs.db
+.swp
+
+# Compiled and caching files
+*.ji
+*.so
+*.dylib
+*.dll
+
+# Coverage and testing outputs
+*.cov
+coverage/
+lcov.info
+
+# Local configuration and preferences
+LocalPreferences.toml
+.julia_history
+
+# Documentation build output
+docs/build/

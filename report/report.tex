@@ -1,0 +1,70 @@
+\documentclass[12pt]{article}
+
+% --- 1. Core Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese, english]{babel} % Supports both if needed
+\usepackage[margin=1in]{geometry}       % Standard Word-style margins
+\usepackage{amsmath, amssymb}            % Essential for Data Science math
+\usepackage{graphicx}                   % For including images
+\usepackage{booktabs}                   % For professional-looking tables
+\usepackage{xcolor}                     % for code coloring
+
+% --- 2. Code Block Setup (listings) ---
+\usepackage{listings}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\lstset{
+    basicstyle=\ttfamily\small,
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{blue},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    frame=single,
+    breaklines=true
+}
+
+% --- 3. Document Metadata ---
+\title{Technical Report: Multimodal Analysis and RAG Injection}
+\author{Bao --- Student ID: [Your ID]}
+\date{\today}
+
+\begin{document}
+
+\maketitle % Generates the title at the top
+
+\section{Introduction}
+This is a placeholder for your introduction. Since you are working on Image Editing and RAG, you might describe your environment here. LaTeX is excellent for maintaining structure in long documents.
+
+\section{Mathematical Foundation}
+In Data Science, we often need to define loss functions or probability distributions. Here is an example of a squared error loss with regularization:
+
+\begin{equation}
+    \mathcal{L}(\theta) = \sum_{i=1}^{n} (y_i - f(x_i; \theta))^2 + \lambda \|\theta\|^2
+\end{equation}
+
+\section{Implementation}
+You can include your Python code directly in the document. This is much cleaner than taking screenshots of your IDE:
+
+\begin{lstlisting}[language=Python, caption=Simple Data Preprocessing]
+import numpy as np
+
+def normalize_data(data):
+    # Scale data between 0 and 1
+    return (data - np.min(data)) / (np.max(data) - np.min(data))
+
+print("Data normalized successfully!")
+\end{lstlisting}
+
+\section{Experimental Results}
+Below is how you would typically include a result image from your Image Editing experiments:
+
+\begin{figure}[h]
+    \centering
+    %\includegraphics[width=0.7\textwidth]{result_plot.png} 
+    \small (Image Placeholder: Uncomment the line above once you have a real image file in this folder)
+    \caption{Output of the Spectral RAG Injection process.}
+\end{figure}
+
+\section{Conclusion}
+Everything looks ready for your thesis work. Happy TeX-ing!
+
+\end{document}
