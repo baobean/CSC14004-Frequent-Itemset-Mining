@@ -4,10 +4,13 @@
 \usepackage[utf8]{inputenc}
 \usepackage[vietnamese, english]{babel} % Supports both if needed
 \usepackage[margin=1in]{geometry}       % Standard Word-style margins
-\usepackage{amsmath, amssymb}            % Essential for Data Science math
+\usepackage{amsmath, amssymb, amsfonts}            % Essential for Data Science math
 \usepackage{graphicx}                   % For including images
 \usepackage{booktabs}                   % For professional-looking tables
 \usepackage{xcolor}                     % for code coloring
+\usepackage[T5]{fontenc}
+\usepackage[utf8]{vietnam}
+\usepackage{lmodern}
 
 % --- 2. Code Block Setup (listings) ---
 \usepackage{listings}
@@ -31,40 +34,65 @@
 
 \maketitle % Generates the title at the top
 
-\section{Introduction}
-This is a placeholder for your introduction. Since you are working on Image Editing and RAG, you might describe your environment here. LaTeX is excellent for maintaining structure in long documents.
+% \section{Introduction}
+% This is a placeholder for your introduction. Since you are working on Image Editing and RAG, you might describe your environment here. LaTeX is excellent for maintaining structure in long documents.
 
-\section{Mathematical Foundation}
-In Data Science, we often need to define loss functions or probability distributions. Here is an example of a squared error loss with regularization:
+% \section{Mathematical Foundation}
+% In Data Science, we often need to define loss functions or probability distributions. Here is an example of a squared error loss with regularization:
 
-\begin{equation}
-    \mathcal{L}(\theta) = \sum_{i=1}^{n} (y_i - f(x_i; \theta))^2 + \lambda \|\theta\|^2
-\end{equation}
+% \begin{equation}
+%     \mathcal{L}(\theta) = \sum_{i=1}^{n} (y_i - f(x_i; \theta))^2 + \lambda \|\theta\|^2
+% \end{equation}
 
-\section{Implementation}
-You can include your Python code directly in the document. This is much cleaner than taking screenshots of your IDE:
+% \section{Implementation}
+% You can include your Python code directly in the document. This is much cleaner than taking screenshots of your IDE:
 
-\begin{lstlisting}[language=Python, caption=Simple Data Preprocessing]
-import numpy as np
+% \begin{lstlisting}[language=Python, caption=Simple Data Preprocessing]
+% import numpy as np
 
-def normalize_data(data):
-    # Scale data between 0 and 1
-    return (data - np.min(data)) / (np.max(data) - np.min(data))
+% def normalize_data(data):
+%     # Scale data between 0 and 1
+%     return (data - np.min(data)) / (np.max(data) - np.min(data))
 
-print("Data normalized successfully!")
-\end{lstlisting}
+% print("Data normalized successfully!")
+% \end{lstlisting}
 
-\section{Experimental Results}
-Below is how you would typically include a result image from your Image Editing experiments:
+% \section{Experimental Results}
+% Below is how you would typically include a result image from your Image Editing experiments:
 
-\begin{figure}[h]
-    \centering
-    %\includegraphics[width=0.7\textwidth]{result_plot.png} 
-    \small (Image Placeholder: Uncomment the line above once you have a real image file in this folder)
-    \caption{Output of the Spectral RAG Injection process.}
-\end{figure}
+% \begin{figure}[h]
+%     \centering
+%     %\includegraphics[width=0.7\textwidth]{result_plot.png} 
+%     \small (Image Placeholder: Uncomment the line above once you have a real image file in this folder)
+%     \caption{Output of the Spectral RAG Injection process.}
+% \end{figure}
 
-\section{Conclusion}
-Everything looks ready for your thesis work. Happy TeX-ing!
+% \section{Conclusion}
+% Everything looks ready for your thesis work. Happy TeX-ing!
+\section{Nền tảng lý thuyết}
+\label{sec:intro}
+\subsection{Bài toán khai thác tập phổ biến}
+\label{subsec:FIM}
+\subsubsection{Cơ sở dữ liệu giao dịch (transaction database)}
+Cơ sở dữ liệu giao dịch (CSDL) $\mathcal{D}$ bao gồm một tập hợp các giao dịch $T$ $(\mathcal{D} = \{T_1, T_2, \ldots, T_n\})$, trong đó mỗi giao dịch chứa một tập hợp các hạng mục không rỗng (itemset) $\mathcal{I} = \{i_1, i_2, \ldots, i_m\}$ sao cho $T \subseteq \mathcal{I}$ và được liên kết với một định danh giao dịch duy nhất (TID).
+
+\subsubsection{Độ hỗ trợ (support)}
+Độ hỗ trợ của một itemset $X$ đo lường mức độ xuất hiện của $X$ trong trong cơ sở dữ liệu giao dịch $\mathcal{D}$: $sup(X) = |\{T \mid X \subseteq T \land T \in \mathcal{D}\}|$. Có hai cách để biểu diễn độ hỗ trợ là độ hỗ trợ tuyệt đối (absolute support or support count) và độ hỗ trợ tương đối (relative support).
+
+\subsubsection{Tập phổ biến (frequent itemset)}
+Ta nói $X$ là tập phổ biến khi $sup(X) \geq minsup$ trong đó $minsup$ là ngưỡng hỗ trợ tối thiểu.
+
+\subsubsection{Tập phổ biến đóng (closed frequent itemset) và tập phổ biến tối đại (maximal frequent itemset)}
+Itemset $X$ được gọi là tập đóng (closed itemset) trong tập dữ liệu $D$ nếu không tồn tại một siêu tập hợp (superitemset) $Y$ nào chứa $X$ mà $Y$ có cùng số đếm hỗ trợ với $X$ trong $D$: $\nexists Y \mid (X \subset Y) \land (\sup(X) = \sup(Y))$. Itemset $X$ là tập phổ biến đóng (closed frequent itemset) khi thỏa mãn cả tính đóng và tính phổ biến.
+
+Itemset $X$ được gọi là tập tối đại (maximal itemset) trong tập dữ liệu $D$ nếu không tồn tại một siêu tập hợp (superitemset) $Y$ nào chứa $X$ trong $D$: $\nexists Y \mid (X \subset Y)$. Itemset $X$ là tập phổ biến tối đại (maximal frequent itemset) khi thỏa mãn cả tính tối đại và tính phổ biến.
+
+Mối quan hệ giữa tập phổ biến (FI), tập phổ biến đóng (CFI), và tập phổ biến tối đại (MFI) được biểu diễn như sau: $MFI\subseteq CFI \subseteq FI$
+
+\subsubsection{Tính chất Apriori (downward closure)}
+Tính chất này phát biểu rằng tất cả các tập con không rỗng của một tập hạng mục phổ biến cũng bắt buộc phải là các tập phổ biến. Ngược lại, nếu một tập hạng mục không thỏa mãn điều kiện về độ hỗ trợ tối thiểu, thì không một tập cha nào của nó có khả năng thỏa mãn điều kiện đó. Bản chất đóng hướng xuống này cho phép các thuật toán khai phá cắt tỉa (prune) triệt để không gian tìm kiếm, loại bỏ một cách an toàn bất kỳ các mẫu ứng viên (candidate patterns) lớn hơn nào ngay khi phát hiện ra một tập con nhỏ hơn của nó là không phổ biến.
+
+\subsection{Phân tích thuật toán AprioriTID}
+\label{subsec: AprioriTID}
 
 \end{document}
