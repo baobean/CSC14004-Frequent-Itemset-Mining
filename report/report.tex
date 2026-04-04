@@ -2,7 +2,7 @@
 
 % --- 1. Core Packages ---
 \usepackage[utf8]{inputenc}
-\usepackage[vietnamese, english]{babel} % Supports both if needed
+% \usepackage[vietnamese, english]{babel} % Supports both if needed
 \usepackage[margin=1in]{geometry}       % Standard Word-style margins
 \usepackage{amsmath, amssymb, amsfonts}            % Essential for Data Science math
 \usepackage{graphicx}                   % For including images
@@ -12,6 +12,13 @@
 \usepackage[utf8]{vietnam}
 \usepackage{lmodern}
 \usepackage{setspace}
+\usepackage{hyperref}
+\usepackage[nameinlink]{cleveref}
+\crefname{figure}{Hình}{Hình}
+\Crefname{figure}{Hình}{Hình}
+\crefname{table}{Bảng}{Bảng}
+\Crefname{table}{Bảng}{Bảng}
+
 
 % --- 2. Code Block Setup (listings) ---
 \usepackage{listings}
@@ -121,7 +128,7 @@ Lấy ví dụ minh họa CSDL $\mathcal{D}$ ở \Cref{fig:example} với mã gi
 
 \textbf{Giải thích mã giả:}
 1) Tìm tập hợp các tập phổ biến có kích thước bằng 1 ($L_1$);
-2) Khởi tạo $\overline{C}_1 = \mathcal{D}$. Mỗi item trong mỗi giao dịch được xem là một tập 1-itemset, tạo thành định dạng <TID, tập các 1-itemset>;
+2) Khởi tạo $\overline{C}_1 = \mathcal{D}$. Mỗi item trong mỗi giao dịch được xem là một tập 1-itemset, tạo thành định dạng $\langle \text{TID}, \text{tập các 1-itemset} \rangle$;
 3) Bắt đầu vòng lặp tìm các tập phổ biến kích thước $k$ ($k\geq2$). Vòng lặp này sẽ tiếp tục cho đến khi $L_{k-1} = \emptyset$;
 4) Sinh ra tập các ứng viên kích thước $k$ ($C_k$) từ tập phổ biến $L_{k-1}$. Hàm apriori-gen dùng để sinh ra tập các ứng viên k-itemset $C_k$ từ tập phổ biến $L_{k-1}$;
 5) Khởi tạo tập $\overline{C}_k$ rỗng;
@@ -155,7 +162,114 @@ Lấy ví dụ CSDL $\mathcal{D}$ ở \Cref{fig:example} có $L_2$: \{\{1 2\}, \
 
 \subsubsection{Phân tích độ phức tạp}
 
+\paragraph{Ký hiệu tham số.}
+\begin{table}[h!]
+\centering
+\begin{tabular}{cl}
+\hline
+\textbf{Ký hiệu} & \textbf{Ý nghĩa} \\
+\hline
+$n$           & Số giao dịch trong CSDL $\mathcal{D}$ \\
+$I$           & Số lượng items phân biệt \\
+$k_{\max}$    & Độ dài tập phổ biến dài nhất \\
+$|C_k|$       & Số ứng viên ở bước $k$ \\
+$|L_k|$       & Số tập phổ biến ở bước $k$ \\
+$w$           & Độ rộng trung bình của giao dịch \\
+$|\bar{C}_k|$ & Tổng số cặp $\langle\text{TID}, \text{itemset}\rangle$ trong $\bar{C}_k$ \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Bước 1 — Khởi tạo (dòng 1--2).}
+Thuật toán quét toàn bộ CSDL $\mathcal{D}$ một lần duy nhất để tính độ hỗ trợ
+từng 1-itemset và khởi tạo $\bar{C}_1$.
+Độ phức tạp:
+\[
+  T_{\text{init}} = O(n \cdot w).
+\]
+
+\paragraph{Bước 2 — Hàm \texttt{apriori-gen}: sinh ứng viên $C_k$.}
+
+\textit{Bước join (dòng 1--4, \Cref{fig:apriori-gen}).}
+Duyệt tất cả các cặp $(p,q) \in L_{k-1} \times L_{k-1}$; mỗi phép so sánh
+tốn $O(k)$ để kiểm tra $k-2$ item đầu giống nhau và item thứ $k-1$ theo thứ tự:
+\[
+  T_{\text{join}}(k) = O\!\left(|L_{k-1}|^2 \cdot k\right).
+\]
+
+\textit{Bước prune (dòng 5--8, Hình~2).}
+Với mỗi ứng viên $c \in C_k$, sinh $k$ tập con kích thước $(k-1)$ rồi
+kiểm tra membership trong $L_{k-1}$:
+\[
+  T_{\text{prune}}(k) = O\!\left(|C_k| \cdot k \cdot |L_{k-1}|\right).
+\]
+
+Tổng chi phí \texttt{apriori-gen} tại bước $k$:
+\[
+  T_{\text{gen}}(k) = O\!\left(|L_{k-1}|^2 \cdot k \;+\; |C_k| \cdot k \cdot |L_{k-1}|\right).
+\]
+
+\paragraph{Bước 3 — Đếm support qua $\bar{C}_k$ (dòng 6--12, \Cref{fig:AprioriTid}).}
+Đây là điểm then chốt phân biệt AprioriTID với Apriori cơ bản.
+Thay vì quét lại $\mathcal{D}$, thuật toán duyệt cấu trúc trung gian $\bar{C}_{k-1}$:
+với mỗi phần tử $t \in \bar{C}_{k-1}$, xác định tập ứng viên
+$C_t = \{c \in C_k \mid (c - c[k]) \in t.\text{set-of-itemsets}
+                       \;\wedge\; (c - c[k-1]) \in t.\text{set-of-itemsets}\}$,
+tăng $c.\text{count}$ cho mọi $c \in C_t$, rồi ghi $\langle t.\text{TID},\, C_t \rangle$
+vào $\bar{C}_k$ nếu $C_t \neq \emptyset$.
+Chi phí tại bước $k$ phụ thuộc vào kích thước tổng thể $|\bar{C}_k|$:
+\[
+  T_{\text{count}}(k) = O\!\left(|\bar{C}_k| \cdot k\right).
+\]
+Khi $k$ tăng, $|\bar{C}_k|$ giảm nhanh do các giao dịch chứa ít ứng viên hơn,
+thường nhỏ hơn rất nhiều so với $n \cdot |C_k|$ — chi phí nếu quét lại $\mathcal{D}$.
+
+\paragraph{Độ phức tạp thời gian tổng thể.}
+Gộp cả ba bước:
+\[
+\boxed{
+  T_{\text{total}} = O(n \cdot w)
+  + \sum_{k=2}^{k_{\max}}
+    \Bigl[
+      |L_{k-1}|^2 \cdot k
+      \;+\; |C_k| \cdot k \cdot |L_{k-1}|
+      \;+\; |\bar{C}_k| \cdot k
+    \Bigr].
+}
+\]
+
+\paragraph{Độ phức tạp không gian.}
+\begin{table}[h!]
+\centering
+\begin{tabular}{lll}
+\hline
+\textbf{Cấu trúc} & \textbf{Không gian} & \textbf{Ghi chú} \\
+\hline
+CSDL gốc $\mathcal{D}$   & $O(n \cdot w)$        & Lưu trữ đầu vào \\
+$C_k,\; L_k$ mỗi vòng   & $O(|C_k| \cdot k)$   & Tập ứng viên và phổ biến \\
+$\bar{C}_k$ (đặc trưng AprioriTID) & $O(n \cdot |C_k|)$ & Lớn nhất ở $k=2$, giảm dần \\
+\hline
+\end{tabular}
+\end{table}
+
+\noindent\textit{Lưu ý:} $\bar{C}_k$ ở giai đoạn $k = 2$ có thể \textbf{lớn hơn}
+$\mathcal{D}$ gốc vì mỗi giao dịch ánh xạ tới nhiều cặp ứng viên.
+Đây là điểm yếu chính của AprioriTID về bộ nhớ so với Apriori tiêu chuẩn.
+
+\paragraph{Phân tích trường hợp tốt / xấu.}
+\begin{itemize}
+  \item \textbf{Tốt nhất:} $|\bar{C}_k|$ giảm nhanh theo $k$ (minsup cao, dữ liệu thưa).
+        AprioriTID vượt trội nhờ tránh $k_{\max}$ lần quét I/O.
+  \item \textbf{Xấu nhất:} Dữ liệu dày đặc, minsup thấp, $|\bar{C}_k|$ lớn ở mọi bước.
+        Bộ nhớ bị đẩy lên cao; AprioriTID có thể chậm hơn Apriori cơ bản.
+  \item \textbf{Tổng quát:} Độ phức tạp thời gian vẫn là \textit{exponential}
+        trong trường hợp xấu theo số items $|I|$, do số ứng viên tối đa là $O(2^{|I|})$.
+\end{itemize}
+
 \subsubsection{So sánh lịch sử}
+Trong giai đoạn đầu của lĩnh vực khai phá tập phổ biến (FIM), các thuật toán tiên phong như AIS và SETM gặp nhiều hạn chế do phải sinh ứng viên "on-the-fly" (trên đường bay) trong quá trình đọc giao dịch và đòi hỏi việc rà quét, sắp xếp cơ sở dữ liệu gốc liên tục rất tốn kém. Sự ra đời của thuật toán Apriori và AprioriTID vào năm 1994 bởi R. Agrawal và R. Srikant đã tạo ra một bước ngoặt lớn khi giải quyết được những nhược điểm này. Điểm cải tiến mang tính lịch sử của AprioriTID là nó áp dụng hàm sinh ứng viên tiên nghiệm giúp thu hẹp không gian tìm kiếm, đồng thời sử dụng cấu trúc dữ liệu trung gian mã hóa ($\overline{C}_k$) để đếm độ hỗ trợ. Nhờ vậy, thuật toán không cần phải quét lại cơ sở dữ liệu gốc từ vòng lặp thứ hai trở đi, giúp giảm thiểu đáng kể chi phí truy xuất đĩa (I/O) so với các thuật toán tiền nhiệm.
+
+Mặc dù là một bước tiến lớn, AprioriTID vẫn để lại một hạn chế cốt lõi: nó vẫn hoàn toàn phụ thuộc vào mô hình "sinh và kiểm tra" (generate-and-test), sinh ra vô số ứng viên nhỏ không cần thiết và dễ gây quá tải bộ nhớ khi xử lý các tập dữ liệu lớn. Để giải quyết bài toán này, các thế hệ thuật toán FIM sau đó đã thay đổi hoàn toàn cách tiếp cận. Nổi bật là thuật toán FP-Growth ra đời bằng cách áp dụng cấu trúc cây nén FP-tree kết hợp với chiến lược "chia để trị", giúp khai phá trực tiếp các tập phổ biến mà hoàn toàn không cần phải sinh ứng viên. Song song đó, thuật toán Eclat cũng xuất hiện, giải quyết điểm nghẽn bằng cách chuyển sang sử dụng định dạng dữ liệu dọc (vertical data format), cho phép tính toán độ hỗ trợ cực kỳ nhanh chóng và hiệu quả thông qua phép giao các tập mã giao dịch (TID\_set).
 
 \section{Ví dụ minh họa}
 \label{sec: example}
