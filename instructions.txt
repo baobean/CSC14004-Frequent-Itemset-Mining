@@ -1,0 +1,8 @@
+Context:
+- Please read the CSC14004 pdf file. That file is the general requirement of this project.
+- Please read the report/report.tex file. That file is the draft report of this project.
+
+Requirements:
+- I want you to implement the requirements in section 3.3 (Chương 3: Cài đặt). For the step-by-step example from section 3.2 (Chương 2), there are currently an Example 1, you have to write the draft report for Example 2. You should create the dataset from those examples, and place them in data/toy. Those examples will be used in Chương 3. All of the requirements in Chương 3 must be satisfied. The language used is Julia 1.9.
+- I want you to implement the requirements in section 3.4 (Chương 4: Thực nghiệm và đánh giá). The dataset is placed in data/benchmark.
+- After implementing, I want you to write the documentation on how to run them. After that, I will instruct further.

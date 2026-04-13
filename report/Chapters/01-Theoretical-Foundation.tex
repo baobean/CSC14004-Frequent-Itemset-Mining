@@ -1,0 +1,289 @@
+\chapter[Nền tảng lý thuyết]{Nền tảng lý thuyết}
+\label{cp:theoretical-foundation}
+
+\section{Bài toán khai thác tập phổ biến}
+
+\subsection{Cơ sở dữ liệu giao dịch (transaction database)}
+\textbf{Cơ sở dữ liệu giao dịch} (CSDL) $\mathcal{D}$ bao gồm một tập hợp các giao dịch $T$, trong đó mỗi giao dịch chứa một tập hợp các hạng mục không rỗng (\textit{itemset}) $\mathcal{I} = \{i_1, i_2, \ldots, i_m\}$ sao cho $T \subseteq \mathcal{I}$ và được gán với một định danh giao dịch duy nhất (TID). Ta nói giao dịch $T$ chứa $X$ (với $X$ là tập các hạng mục trong $\mathcal{I}$), nếu $X \subseteq T$.
+
+\subsection{Độ hỗ trợ (support)}
+\textbf{Độ hỗ trợ} (\textit{support}) của một tập hạng mục $X$ là phần trăm số lượng giao dịch có chứa $X$ trong cơ sở dữ liệu giao dịch $\mathcal{D}$, có thể được định nghĩa bằng (\ref{eq:equation-1-1}):
+\begin{equation}
+    \label{eq:equation-1-1}
+    \textit{sup}(X) = \frac{|\{T \mid X \subseteq T \land T \in \mathcal{D}\}|}{|\mathcal{D}|}
+\end{equation}
+    
+Có hai cách để biểu diễn độ hỗ trợ là \textbf{độ hỗ trợ tuyệt đối} (\textit{absolute support} hay \textit{support count}) và \textbf{độ hỗ trợ tương đối} (\textit{relative support}).
+
+\textbf{Độ hỗ trợ tuyệt đối} của một tập hạng mục $X$ là số lượng giao dịch trong CSDL chứa $X$, được định nghĩa bằng:
+\begin{equation}
+    \label{eq:equation-1-2}
+    \textit{support\textunderscore count}(X) = |\{T \mid X \subseteq T \land T \in \mathcal{D}\}|
+\end{equation}
+
+\textbf{Độ hỗ trợ tương đối} của một tập hạng mục $X$ là tỷ lệ giữa độ hỗ trợ tuyệt đối của $X$ và tổng số giao dịch trong CSDL, biểu diễn bằng (\ref{eq:equation-1-1}).
+
+\subsection{Tập phổ biến (frequent itemset)}
+Ta nói $X$ là \textbf{tập phổ biến} khi $\textit{sup}(X) \geq $ \textit{minsup} trong đó \textit{minsup} là ngưỡng hỗ trợ tối thiểu được định trước. Một tập hạng mục chứa k hạng mục là một \textbf{k-itemset}. Tập hợp của các tập phổ biến k-itemset được ký hiệu là $L_k$.
+
+\subsection{Tập đóng (closed itemset) và tập tối đại (maximal itemset)}
+Tập hạng mục $X$ được gọi là \textbf{đóng} (\textit{closed}) trong tập dữ liệu $D$ nếu không tồn tại một siêu tập hợp (\textit{superitemset}) $Y$ (tức là, mọi phần tử của $X$ đều thuộc $Y$, nhưng tồn tại ít nhất một phần tử của $Y$ không thuộc $X$) nào chứa $X$ mà $Y$ có cùng số hỗ trợ (\textit{support count}) với $X$ trong $D$, hay nói cách khác:
+\begin{equation}
+    \label{eq:equation-1-3}
+    \nexists Y \mid (X \subset Y) \land (\textit{sup}(X) = \textit{sup}(Y))
+\end{equation}
+Tập hạng mục $X$ là \textbf{tập phổ biến đóng} (\textit{closed frequent itemset}) khi thỏa mãn cả tính đóng và tính phổ biến.
+
+Tập hạng mục $X$ được gọi là \textbf{tập tối đại} (\textit{maximal itemset}) trong tập dữ liệu $D$ nếu không tồn tại một siêu tập hợp $Y$ nào chứa $X$ trong $D$, hay nói cách khác:
+\begin{equation}
+    \label{eq:equation-1-4}
+    \nexists Y \mid (X \subset Y)
+\end{equation}
+Tập hạng mục $X$ là \textbf{tập phổ biến tối đại} (\textit{maximal frequent itemset}) khi thỏa mãn cả tính tối đại và tính phổ biến.
+
+Mối quan hệ giữa tập phổ biến (FI), tập phổ biến đóng (CFI), và tập phổ biến tối đại (MFI) được biểu diễn như sau: MFI $\subseteq$ CFI $\subseteq$ FI.
+
+\subsection{Tính chất Apriori (downward closure)}
+\textbf{Tính chất Apriori}: Tất cả các tập con không rỗng của một tập hạng mục phổ biến cũng phải là các tập phổ biến.
+
+\textbf{Tính chất đơn điệu giảm (antimonotonicity)}: Nếu một tập hợp không vượt qua được một phép thử, thì tất cả các tập hợp cha của nó cũng sẽ không vượt qua được phép thử đó.
+
+\textbf{Chứng minh}: Nếu một tập hạng mục $I$ không thỏa mãn điều kiện về độ hỗ trợ tối thiểu (\textit{minsup}), thì $I$ sẽ không phải là tập phổ biến (tức là $P(I) < \textit{minsup}$). Khi đó, nếu có một hạng mục $a$ được thêm vào $I$, thì tập hạng mục ($I \cup \{a\}$) sẽ không thể xuất hiện nhiều lần hơn $I$. Vả lại, có thể coi ($I \cup \{a\}$) là tập cha của $I$ (vì $I \subset (I \cup \{a\})$). Do đó, ($I \cup \{a\}$) cũng không thể là tập phổ biến (do $P(I \cup \{a\}) < \textit{minsup}$).
+
+\section{Phân tích thuật toán AprioriTID}
+Thuật toán tìm tập hạng mục lớn (\textit{large itemsets}) hoạt động lặp đi lặp lại qua nhiều lượt quét CSDL. Ở lượt đầu tiên, thuật toán đếm độ hỗ trợ (\textit{support}) của từng hạng mục để tìm các large 1-itemset. Ở các vòng tiếp theo, các large itemset từ vòng trước được dùng làm cơ sở sinh ra các tập ứng viên (\textit{candidate itemsets}). Thuật toán tiếp tục quét CSDL để đếm support cho ứng viên, lọc ra các large itemset mới và lặp lại quá trình này cho đến khi không tìm thêm được tập nào nữa.
+
+\subsection{Ý tưởng cốt lõi}
+Thuật toán Apriori tìm tập phổ biến thông qua quá trình sinh ứng viên và kiểm tra theo từng mức độ dài, trong đó các large k-itemset được sử dụng để khám phá các large (k+1)-itemset. Ý tưởng cốt lõi của AprioriTID dựa trên một biến thể tối ưu hóa gọi là giảm thiểu giao dịch (\textit{transaction reduction}). Nếu một giao dịch không chứa bất kỳ k-itemset phổ biến nào thì nó cũng không thể chứa bất kỳ (k+1)-itemset phổ biến nào khác. Do đó, ta loại bỏ các TID này và không cần xét đến chúng trong các lần quét CSDL ở các vòng lặp tiếp theo. Thay vì phải quét lại CSDL gốc nhiều lần, AprioriTID tạo ra một tập dữ liệu mã hóa trung gian, ký hiệu là $\overline{C}_k$ để lưu vết những ứng viên có mặt trong từng giao dịch. Ở các vòng lặp sau, tập $\overline{C}_k$ này có thể trở nên nhỏ hơn rất nhiều so với kích thước của CSDL gốc, giúp tiết kiệm đáng kể chi phí đọc đĩa (I/O).
+
+Đầu tiên, tìm tập hợp 1-itemset phổ biến bằng cách đếm số lần xuất hiện của TID chứa 1-itemset, và thu thập những 1-itemset thỏa mãn minsup. Tập hợp kết quả được ký hiệu là $L_1$. Tiếp theo, $L_1$ được sử dụng để tìm $L_2$, tập hợp các 2-itemset phổ biến, được sử dụng để tìm $L_3$, và cứ thế tiếp tục cho đến khi không còn k-itemset phổ biến nào được tìm thấy nữa.
+
+Các thuật toán đi trước như AIS hay SETM sinh các tập ứng viên ngay tức thì (on-the-fly) bằng cách đọc từng giao dịch và mở rộng các tập phổ biến có trong giao dịch đó. Cách này tạo ra vô số ứng viên dư thừa, dẫn đến lãng phí tài nguyên. AprioriTID khắc phục điều này bằng cách sinh ứng viên một cách độc lập thông qua việc nối các tập phổ biến bước trước, tạo ra tập ứng viên nhỏ hơn rất nhiều.
+
+
+\subsection{Cấu trúc dữ liệu chính}
+AprioriTID sử dụng một cấu trúc dữ liệu mảng tuần tự đặc trưng là tập $\overline{C}_k$.  Mỗi phần tử trong $\overline{C}_k$ đại diện cho một giao dịch, có định dạng: {$\langle \text{TID},\{X_k\}\rangle$}, trong đó $X_k$ là k-itemset xuất hiện trong TID. Nếu một giao dịch không chứa bất kỳ ứng viên nào, nó sẽ không có mục (\textit{entry}) tương ứng trong $\overline{C}_k$.
+
+Lấy ví dụ minh họa CSDL $\mathcal{D}$ ở \autoref{fig:example-1} với TID $101$ chứa các mục: \{1, 2, 3, 4\}. Ngưỡng \textit{minsup} = 2.
+
+\begin{itemize}
+    \item Ở bước $k=1$, $\overline{C}_1$ sẽ là: $\langle$ 101, \{\{1\}, \{2\}, \{3\}, \{4\}\} $\rangle$.
+    \item Ở bước $k=2$, tập ứng viên $C_2$ chứa \{1, 2\}, \{1, 4\}, \{1, 5\},... (lưu ý mục \{3\} không đạt minsup ở $L_1$ nên các tập chứa \{3\} không xuất hiện trong $C_2$). Vì TID 101 chứa các tổ hợp con hợp lệ nằm trong $C_2$ là \{1, 2\}, \{1, 4\}, \{2, 4\}, nên $\overline{C}_2$ cho TID 101 sẽ là: $\langle$ 101, \{\{1, 2\}, \{1, 4\}, \{2, 4\}\} $\rangle$.
+    \item Ở bước $k=3$, tập ứng viên $C_3$ là \{\{1, 2, 4\}, \{1, 4, 5\}\}. Giao dịch 101 chỉ chứa tổ hợp \{\{1, 2, 4\}\} có mặt trong $C_3$, nên $\overline{C}_3$ cho TID 101 sẽ là: $\langle$ 101, \{\{1, 2, 4\}\} $\rangle$.
+    \item Ở bước $k=4$, vì $L_3$ = \{\{1, 2, 4\}, \{1, 4, 5\}\} không có hai phần tử nào trùng tiền tố độ dài 2, nên hàm apriori-gen trả về $C_4 = \emptyset$ và vòng lặp kết thúc.
+\end{itemize}
+
+\subsection{Mã giả (Pseudocode)}
+\begin{figure}[!ht]
+\centering
+\begin{minipage}{\linewidth}
+\noindent\textbf{Thuật toán AprioriTID}
+
+\noindent\textbf{Input:}
+\begin{itemize}[nosep,leftmargin=2em,topsep=2pt]
+    \item $\mathcal{D}$: cơ sở dữ liệu giao dịch;
+    \item \textit{minsup}: ngưỡng độ hỗ trợ tối thiểu.
+\end{itemize}
+\noindent\textbf{Output:} $L$, tập các itemset phổ biến trong $\mathcal{D}$.
+
+\noindent\textbf{Method:}
+\begin{algorithmic}[1]
+\State $L_1 \gets \{\text{các 1-itemset phổ biến}\}$
+\State $\overline{C}_1 \gets \mathcal{D}$
+\For{$k \gets 2$; $L_{k-1} \neq \emptyset$; $k{+}{+}$}
+    \State $C_k \gets \text{apriori-gen}(L_{k-1})$ \Comment{sinh ứng viên mới}
+    \State $\overline{C}_k \gets \emptyset$
+    \ForAll{phần tử $t \in \overline{C}_{k-1}$}
+        \State $C_t \gets \{c \in C_k \mid (c - c[k]) \in t.\text{set-of-itemsets} \land (c - c[k-1]) \in t.\text{set-of-itemsets}\}$
+        \ForAll{ứng viên $c \in C_t$}
+            \State $c.\text{count} \gets c.\text{count} + 1$
+        \EndFor
+        \If{$C_t \neq \emptyset$}
+            \State $\overline{C}_k \gets \overline{C}_k \cup \{\langle t.\text{TID}, C_t \rangle\}$
+        \EndIf
+    \EndFor
+    \State $L_k \gets \{c \in C_k \mid c.\text{count} \geq \textit{minsup}\}$
+\EndFor
+\State \Return $L = \bigcup_k L_k$
+\end{algorithmic}
+
+\vspace{0.6em}
+\noindent\textbf{procedure apriori-gen}($L_{k-1}$: tập phổ biến $(k{-}1)$-itemset)\textbf{:}
+\begin{algorithmic}[1]
+\ForAll{itemset $l_1 \in L_{k-1}$}
+    \ForAll{itemset $l_2 \in L_{k-1}$}
+        \If{$(l_1[1] = l_2[1]) \land \ldots \land (l_1[k{-}2] = l_2[k{-}2]) \land (l_1[k{-}1] < l_2[k{-}1])$}
+            \State $c \gets l_1 \bowtie l_2$ \Comment{bước join: sinh ứng viên}
+            \If{has\_infrequent\_subset($c, L_{k-1}$)}
+                \State \textbf{delete} $c$ \Comment{bước prune: loại ứng viên không đạt}
+            \Else
+                \State thêm $c$ vào $C_k$
+            \EndIf
+        \EndIf
+    \EndFor
+\EndFor
+\State \Return $C_k$
+\end{algorithmic}
+
+\vspace{0.6em}
+\noindent\textbf{procedure has\_infrequent\_subset}($c$: ứng viên $k$-itemset; $L_{k-1}$: tập phổ biến $(k{-}1)$-itemset)\textbf{:}
+\begin{algorithmic}[1]
+\ForAll{$(k{-}1)$-subset $s$ của $c$}
+    \If{$s \notin L_{k-1}$}
+        \State \Return TRUE
+    \EndIf
+\EndFor
+\State \Return FALSE
+\end{algorithmic}
+\end{minipage}
+\caption{Thuật toán AprioriTID tìm tập phổ biến dựa trên sinh ứng viên.}
+\label{fig:AprioriTid}
+\end{figure}
+
+\textbf{Giải thích mã giả:}
+\begin{enumerate}
+    \item (1) Tìm tập hợp các tập phổ biến có kích thước bằng 1 ($L_1$);
+    \item (2) Khởi tạo $\overline{C}_1 = \mathcal{D}$. Mỗi item trong mỗi giao dịch được xem là một tập 1-itemset, tạo thành định dạng $\langle \text{TID}, \text{tập các 1-itemset} \rangle$;
+    \item (3) Bắt đầu vòng lặp tìm các tập phổ biến kích thước $k$ ($k\geq2$). Vòng lặp này sẽ tiếp tục cho đến khi $L_{k-1} = \emptyset$;
+    \item (4) Sinh ra tập các ứng viên kích thước $k$ ($C_k$) từ tập phổ biến $L_{k-1}$. Hàm apriori-gen dùng để sinh ra tập các ứng viên k-itemset $C_k$ từ tập phổ biến $L_{k-1}$;
+    \item (5) Khởi tạo tập $\overline{C}_k$ rỗng;
+    \item (6 - 11) Duyệt qua $\overline{C}_{k-1}$ để xác định và tăng biến đếm độ hỗ trợ cho các ứng viên trong $C_k$ thực sự xuất hiện trong mỗi giao dịch. Sau đó xây dựng $\overline{C}_k$, chỉ giữ lại những giao dịch có chứa ít nhất một ứng viên $k$-itemset;
+    \item (12) Lọc ra tập phổ biến $L_k$. Chỉ giữ lại những ứng viên trong $C_k$ có $\text{count} \geq \textit{minsup}$;
+    \item (14) Hợp nhất toàn bộ các tập $L_k$ là danh sách tất cả các itemset phổ biến trong CSDL.
+\end{enumerate}
+
+Hàm \texttt{apriori-gen} nhận đầu vào là $L_{k-1}$, tức là tập hợp tất cả các tập large $(k{-}1)$-itemset, và trả về một tập hợp gồm các large $k$-itemset. Nó gồm hai bước: (1) \textbf{join} — hợp $L_{k-1}$ với chính nó để sinh ra các tập ứng viên $C_k$; và (2) \textbf{prune} — tỉa tất cả các ứng viên $c \in C_k$ nếu tồn tại bất kỳ $(k{-}1)$-itemset nào của $c$ không nằm trong $L_{k-1}$ (xem thủ tục \texttt{has\_infrequent\_subset} trong \autoref{fig:AprioriTid}).
+
+Lấy ví dụ CSDL $\mathcal{D}$ ở \autoref{fig:example-1} có $L_2$: \{\{1 2\}, \{1 4\}, \{1 5\}, \{2 4\}, \{4 5\}\}. Bước join ghép các cặp có cùng item đầu tiên và item thứ hai theo thứ tự tăng dần: \{1 2\}$\bowtie$\{1 4\}, \{1 2\}$\bowtie$\{1 5\}, \{1 4\}$\bowtie$\{1 5\}, sinh ra $C_3$: \{\{1 2 4\}, \{1 2 5\}, \{1 4 5\}\}. Bước prune xóa \{1 2 5\} vì tập con \{2 5\} không nằm trong $L_2$. Do đó chỉ còn lại \{\{1 2 4\}, \{1 4 5\}\} ở $C_3$.
+
+\subsection{Phân tích độ phức tạp}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{cl}
+\hline
+\textbf{Ký hiệu} & \textbf{Ý nghĩa} \\
+\hline
+$n$           & Số giao dịch trong CSDL $\mathcal{D}$ \\
+$|I|$         & Số lượng hạng mục (item) phân biệt \\
+$w$           & Độ rộng trung bình của một giao dịch \\
+$k_{\max}$    & Độ dài tập phổ biến dài nhất \\
+$|C_k|$       & Số ứng viên ở bước $k$ \\
+$|L_k|$       & Số tập phổ biến ở bước $k$ \\
+$|\overline{C}_k|$ & Tổng số cặp $\langle\text{TID}, \text{itemset}\rangle$ trong $\overline{C}_k$ \\
+\textit{minsup} & Ngưỡng độ hỗ trợ tối thiểu \\
+\hline
+\end{tabular}
+\caption{Các ký hiệu dùng trong phân tích độ phức tạp.}
+\label{tab:complexity-notation}
+\end{table}
+
+\subsubsection{Phân rã chi phí theo từng bước}
+
+\paragraph{Bước 1 — Khởi tạo.}
+Thuật toán quét toàn bộ CSDL $\mathcal{D}$ một lần duy nhất để tính độ hỗ trợ
+từng 1-itemset và khởi tạo $\overline{C}_1$. Độ phức tạp:
+\begin{equation}
+    \label{eq:equation-1-5a}
+    T_{\text{init}} = O(n \cdot w)
+\end{equation}
+
+\paragraph{Bước 2 — Sinh ứng viên bằng \texttt{apriori-gen}.}
+Hàm \texttt{apriori-gen} gồm hai pha con:
+\begin{itemize}[nosep,topsep=2pt]
+    \item \textit{Join:} duyệt mọi cặp $(p,q) \in L_{k-1} \times L_{k-1}$, mỗi phép so sánh tốn $O(k)$ để kiểm tra $k{-}2$ item đầu khớp và item cuối theo thứ tự:
+    \begin{equation}
+        \label{eq:equation-1-5b}
+        T_{\text{join}}(k) = O\!\left(|L_{k-1}|^2 \cdot k\right)
+    \end{equation}
+    \item \textit{Prune:} với mỗi ứng viên $c \in C_k$, sinh $k$ tập con kích thước $(k{-}1)$ và kiểm tra thành viên trong $L_{k-1}$:
+    \begin{equation}
+        \label{eq:equation-1-5c}
+        T_{\text{prune}}(k) = O\!\left(|C_k| \cdot k \cdot |L_{k-1}|\right)
+    \end{equation}
+\end{itemize}
+Tổng chi phí \texttt{apriori-gen} tại bước $k$:
+\begin{equation}
+    \label{eq:equation-1-5d}
+    T_{\text{gen}}(k) = O\!\left(|L_{k-1}|^2 \cdot k \;+\; |C_k| \cdot k \cdot |L_{k-1}|\right)
+\end{equation}
+
+\paragraph{Bước 3 — Đếm support qua $\overline{C}_k$.}
+Đây là điểm then chốt phân biệt AprioriTID với Apriori cơ bản: thay vì quét lại $\mathcal{D}$, thuật toán duyệt cấu trúc trung gian $\overline{C}_{k-1}$. Với mỗi phần tử $t \in \overline{C}_{k-1}$, thuật toán xác định tập ứng viên $C_t$ có trong $t$, tăng $c.\text{count}$ cho mọi $c \in C_t$, rồi ghi $\langle t.\text{TID}, C_t \rangle$ vào $\overline{C}_k$ nếu $C_t \neq \emptyset$. Chi phí:
+\begin{equation}
+    \label{eq:equation-1-5e}
+    T_{\text{count}}(k) = O\!\left(|\overline{C}_k| \cdot k\right)
+\end{equation}
+Khi $k$ tăng, $|\overline{C}_k|$ thường giảm nhanh do transaction reduction, nhỏ hơn rất nhiều so với chi phí $O(n \cdot |C_k|)$ nếu phải quét lại $\mathcal{D}$.
+
+\paragraph{Tổng chi phí thời gian.}
+Gộp cả ba bước:
+\begin{equation}
+    \label{eq:equation-1-5}
+    T_{\text{total}} = O(n \cdot w)
+    + \sum_{k=2}^{k_{\max}}
+        \Bigl[
+        |L_{k-1}|^2 \cdot k
+        \;+\; |C_k| \cdot k \cdot |L_{k-1}|
+        \;+\; |\overline{C}_k| \cdot k
+        \Bigr].
+\end{equation}
+
+\subsubsection{Độ phức tạp thời gian theo trường hợp}
+
+\paragraph{Trường hợp tốt nhất.}
+Xảy ra khi dữ liệu thưa và \textit{minsup} cao: $|L_k|$ nhỏ, $k_{\max}$ nhỏ, và $|\overline{C}_k|$ giảm nhanh sau $k = 2$. Khi đó chi phí $T_{\text{count}}(k)$ chiếm ưu thế nhưng $\sum_k |\overline{C}_k| \ll n \cdot k_{\max}$, và thuật toán dừng sớm sau vài vòng lặp. Chi phí xấp xỉ:
+\begin{equation}
+    \label{eq:equation-1-6}
+    T_{\text{best}} = O(n \cdot w + |L_1|^2 + |\overline{C}_2| \cdot 2)
+\end{equation}
+AprioriTID vượt trội so với Apriori chuẩn nhờ tránh được $k_{\max}$ lần quét lại $\mathcal{D}$.
+
+\paragraph{Trường hợp trung bình.}
+Trên CSDL giao dịch thực tế điển hình, số tập phổ biến có phân bố thưa dần theo $k$: $|L_k|$ đạt cực đại quanh $k = 2$ hoặc $k = 3$ rồi giảm dần, và $|\overline{C}_k|$ co lại nhanh ở các bước sau. Chi phí bị chi phối bởi vài vòng lặp đầu tiên:
+\begin{equation}
+    \label{eq:equation-1-7}
+    T_{\text{avg}} = O\!\left(n \cdot w + \sum_{k=2}^{k_{\max}} |\overline{C}_k| \cdot k\right)
+\end{equation}
+với tổng $\sum_k |\overline{C}_k|$ thường chỉ là bội số hằng số của $n \cdot w$. Đây là chế độ hoạt động mà AprioriTID được thiết kế để tối ưu.
+
+\paragraph{Trường hợp xấu nhất.}
+Xảy ra khi dữ liệu \textbf{dày đặc} và \textit{minsup} thấp: gần như mọi itemset đều phổ biến, $|L_k|$ tăng theo hướng tổ hợp $\binom{|I|}{k}$, và $|\overline{C}_k|$ không co lại. Khi đó số ứng viên tối đa là $O(2^{|I|})$ và độ phức tạp thời gian trở thành \textit{hàm mũ} theo $|I|$:
+\begin{equation}
+    \label{eq:equation-1-8}
+    T_{\text{worst}} = O\!\left(2^{|I|} \cdot |I|\right).
+\end{equation}
+Đây là giới hạn lý thuyết chung cho mọi thuật toán sinh-và-kiểm-tra (\textit{generate-and-test}) dựa trên Apriori.
+
+\subsubsection{Độ phức tạp không gian}
+\begin{table}[h!]
+\centering
+\begin{tabular}{lll}
+\hline
+\textbf{Cấu trúc} & \textbf{Không gian} & \textbf{Ghi chú} \\
+\hline
+CSDL gốc $\mathcal{D}$   & $O(n \cdot w)$        & Lưu trữ đầu vào \\
+$C_k,\; L_k$ mỗi vòng   & $O(|C_k| \cdot k)$   & Tập ứng viên và tập phổ biến \\
+$\overline{C}_k$ (đặc trưng AprioriTID) & $O(n \cdot |C_k|)$ & Lớn nhất ở $k = 2$, giảm dần \\
+\hline
+\end{tabular}
+\caption{Độ phức tạp không gian của các cấu trúc chính.}
+\label{tab:complexity-space}
+\end{table}
+
+\noindent Điểm đáng chú ý là $\overline{C}_k$ ở giai đoạn $k = 2$ có thể \textbf{lớn hơn} $\mathcal{D}$ gốc: mỗi giao dịch $w$ item ánh xạ thành $\binom{w}{2}$ cặp ứng viên, dẫn tới tăng \textit{bậc hai} theo $w$. Đây là điểm yếu bộ nhớ chính của AprioriTID so với Apriori tiêu chuẩn, đặc biệt rõ trên dữ liệu dày đặc (xem minh họa ở \autoref{cp:example}).
+
+\subsubsection{Các yếu tố ảnh hưởng đến hiệu năng}
+Ba yếu tố chính quyết định hiệu năng thực tế của AprioriTID:
+\begin{itemize}[nosep,topsep=2pt]
+    \item \textbf{Ngưỡng \textit{minsup}.} Yếu tố ảnh hưởng mạnh nhất. \textit{minsup} thấp làm $|L_k|$, $|C_k|$ và $|\overline{C}_k|$ tăng nhanh theo cấp số, kéo theo cả chi phí thời gian lẫn bộ nhớ. Ngược lại, \textit{minsup} cao giúp transaction reduction cắt tỉa $\overline{C}_k$ nhanh chóng, đưa thuật toán về gần trường hợp tốt nhất.
+    \item \textbf{Kích thước và mật độ của CSDL.} Số giao dịch $n$ chỉ ảnh hưởng tuyến tính ở bước khởi tạo $O(n \cdot w)$. Ngược lại, \textit{mật độ} của dữ liệu (tỷ lệ item mỗi giao dịch chứa) mới là yếu tố then chốt: dữ liệu dày đặc (chess, mushroom) làm $|\overline{C}_2|$ phình to và $k_{\max}$ dài hơn, còn dữ liệu thưa (retail, T10I4D100K) giúp thuật toán hội tụ nhanh.
+    \item \textbf{Độ rộng trung bình giao dịch $w$.} Ảnh hưởng \textit{bậc hai} lên kích thước $\overline{C}_2$ (mỗi giao dịch sinh $\binom{w}{2}$ cặp ứng viên) và ảnh hưởng tuyến tính lên bước khởi tạo. Giao dịch càng dài thì cả thời gian lẫn bộ nhớ cao điểm đều tăng.
+\end{itemize}
+\noindent Ba yếu tố này sẽ được kiểm chứng bằng thực nghiệm trong \autoref{cp:experiment-evaluation}.
+
+\subsection{So sánh lịch sử}
+Trong giai đoạn đầu của lĩnh vực khai phá tập phổ biến (FIM), các thuật toán tiên phong như AIS và SETM gặp nhiều hạn chế do phải sinh ứng viên "on-the-fly" (trên đường bay) trong quá trình đọc giao dịch và đòi hỏi việc rà quét, sắp xếp cơ sở dữ liệu gốc liên tục rất tốn kém. Sự ra đời của thuật toán Apriori và AprioriTID vào năm 1994 bởi R. Agrawal và R. Srikant đã tạo ra một bước ngoặt lớn khi giải quyết được những nhược điểm này. Điểm cải tiến mang tính lịch sử của AprioriTID là nó áp dụng hàm sinh ứng viên tiên nghiệm giúp thu hẹp không gian tìm kiếm, đồng thời sử dụng cấu trúc dữ liệu trung gian mã hóa ($\overline{C}_k$) để đếm độ hỗ trợ. Nhờ vậy, thuật toán không cần phải quét lại cơ sở dữ liệu gốc từ vòng lặp thứ hai trở đi, giúp giảm thiểu đáng kể chi phí truy xuất đĩa (I/O) so với các thuật toán tiền nhiệm.
+
+Mặc dù là một bước tiến lớn, AprioriTID vẫn để lại một hạn chế cốt lõi: nó vẫn hoàn toàn phụ thuộc vào mô hình "sinh và kiểm tra" (generate-and-test), sinh ra vô số ứng viên nhỏ không cần thiết và dễ gây quá tải bộ nhớ khi xử lý các tập dữ liệu lớn. Để giải quyết bài toán này, các thế hệ thuật toán FIM sau đó đã thay đổi hoàn toàn cách tiếp cận. Nổi bật là thuật toán FP-Growth ra đời bằng cách áp dụng cấu trúc cây nén FP-tree kết hợp với chiến lược "chia để trị", giúp khai phá trực tiếp các tập phổ biến mà hoàn toàn không cần phải sinh ứng viên. Song song đó, thuật toán Eclat cũng xuất hiện, giải quyết điểm nghẽn bằng cách chuyển sang sử dụng định dạng dữ liệu dọc (vertical data format), cho phép tính toán độ hỗ trợ cực kỳ nhanh chóng và hiệu quả thông qua phép giao các tập mã giao dịch (TID\_set).
+
