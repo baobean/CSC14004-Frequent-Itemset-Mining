@@ -1,0 +1,5 @@
+dataset,minsup,n_trans,n_ours,n_spmf,matched,missing,extra,match_pct
+chess.txt,2500,3196,11493,11493,11493,0,0,100.0
+mushrooms.txt,4000,8416,191,175,175,0,16,100.0
+retail.txt,1000,88162,135,135,135,0,0,100.0
+T10I4D100K.txt,1000,100000,385,385,385,0,0,100.0

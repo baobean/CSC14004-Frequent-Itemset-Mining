@@ -1,0 +1,6 @@
+dataset,fraction,n_trans,minsup,elapsed_ms,alloc_mib,n_itemsets
+retail.txt,0.1,8816,88,102.37,112.421,209
+retail.txt,0.25,22040,220,276.89,281.821,205
+retail.txt,0.5,44081,441,471.89,480.583,178
+retail.txt,0.75,66122,661,635.34,641.009,155
+retail.txt,1.0,88162,882,1015.4,932.294,159

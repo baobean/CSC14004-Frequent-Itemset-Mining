@@ -1,20 +1,3 @@
-# AprioriTID algorithm implementation
-# Based on: Agrawal & Srikant, "Fast Algorithms for Mining Association Rules", VLDB 1994
-# Requires: structures.jl, apriori_gen.jl to be included first
-
-"""
-    apriori_tid(transactions::Vector{Vector{Int}}, minsup::Int; optimized::Bool=true)
-        -> Vector{Tuple{Vector{Int}, Int}}
-
-Run the AprioriTID algorithm on a transaction database.
-
-Returns all frequent itemsets with their absolute support counts.
-
-Arguments:
-- `transactions`: list of transactions, each a sorted Vector{Int} of item IDs
-- `minsup`: minimum absolute support count
-- `optimized`: if true, use hash-based candidate lookup (default: true)
-"""
 function apriori_tid(transactions::Vector{Vector{Int}}, minsup::Int;
                      optimized::Bool=true)::Vector{Tuple{Vector{Int}, Int}}
 

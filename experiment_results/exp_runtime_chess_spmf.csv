@@ -1,0 +1,6 @@
+dataset,minsup,n_trans,elapsed_ms,n_itemsets,source
+chess.txt,3000,3196,150,155,SPMF
+chess.txt,2875,3196,267,628,SPMF
+chess.txt,2750,3196,475,1956,SPMF
+chess.txt,2625,3196,949,5189,SPMF
+chess.txt,2500,3196,2106,11414,SPMF

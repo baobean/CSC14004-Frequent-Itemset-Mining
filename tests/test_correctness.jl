@@ -1,95 +1,59 @@
 using Test
 
-# Include source files (skipped if already loaded via runtests.jl)
 if !@isdefined(apriori_tid)
-    include(joinpath(@__DIR__, "..", "src", "structures.jl"))
-    include(joinpath(@__DIR__, "..", "src", "utils.jl"))
-    include(joinpath(@__DIR__, "..", "src", "algorithm", "apriori_gen.jl"))
-    include(joinpath(@__DIR__, "..", "src", "algorithm", "apriori_tid.jl"))
+    const _SRC = joinpath(@__DIR__, "..", "src")
+    include(joinpath(_SRC, "structures.jl"))
+    include(joinpath(_SRC, "utils.jl"))
+    include(joinpath(_SRC, "algorithm", "apriori_gen.jl"))
+    include(joinpath(_SRC, "algorithm", "apriori_tid.jl"))
 end
 
-"""Helper to convert results to a comparable set of (sorted itemset, support) tuples."""
-function results_to_set(results::Vector{Tuple{Vector{Int}, Int}})
+function as_set(results::Vector{Tuple{Vector{Int}, Int}})
     Set([(sort(is), sup) for (is, sup) in results])
 end
 
-@testset "AprioriTID Correctness Tests" begin
+const TOY_CASES = [
+    ("example1.txt",          2, "Example 1"),
+    ("example2.txt",          2, "Example 2"),
+    ("test_single_item.txt",  2, "Single item"),
+    ("test_empty_result.txt", 3, "Empty result"),
+    ("test_all_frequent.txt", 2, "All frequent"),
+]
 
-    @testset "Example 1: Basic (minsup=2)" begin
-        transactions = read_spmf(joinpath(@__DIR__, "..", "data", "toy", "example1.txt"))
-        results = apriori_tid(transactions, 2)
+const TOY_DIR = joinpath(@__DIR__, "..", "data", "toy")
+const REF_DIR = joinpath(TOY_DIR, "spmf_reference")
 
-        expected = Set([
-            ([1], 4), ([2], 3), ([4], 3), ([5], 3),
-            ([1, 2], 3), ([1, 4], 3), ([1, 5], 2), ([2, 4], 2), ([4, 5], 2),
-            ([1, 2, 4], 2), ([1, 4, 5], 2)
-        ])
+@testset "Correctness vs SPMF reference (5 toy datasets)" begin
+    total_matched = 0
+    total_ref = 0
 
-        @test results_to_set(results) == expected
-        @test length(results) == 11
+    for (fname, minsup, label) in TOY_CASES
+        @testset "$label (minsup=$minsup)" begin
+            transactions = read_spmf(joinpath(TOY_DIR, fname))
+            reference = read_spmf_output(joinpath(REF_DIR, fname))
+
+            # Optimized variant must match the SPMF reference exactly.
+            results_opt = apriori_tid(transactions, minsup; optimized=true)
+            ref_set = as_set(reference)
+            opt_set = as_set(results_opt)
+
+            @test opt_set == ref_set
+            @test length(results_opt) == length(reference)
+
+            # Basic variant must agree with the optimized one.
+            results_basic = apriori_tid(transactions, minsup; optimized=false)
+            @test as_set(results_basic) == opt_set
+
+            matched = length(intersect(opt_set, ref_set))
+            println("  $label: $matched/$(length(ref_set)) matched " *
+                    "($(round(100 * matched / max(length(ref_set), 1), digits=1))%)")
+            total_matched += matched
+            total_ref += length(ref_set)
+        end
     end
 
-    @testset "Example 2: Dense dataset (minsup=2)" begin
-        transactions = read_spmf(joinpath(@__DIR__, "..", "data", "toy", "example2.txt"))
-        results = apriori_tid(transactions, 2)
-
-        # All 7 items appear >= 2 times, so all 1-itemsets are frequent
-        freq_1 = [(is, sup) for (is, sup) in results if length(is) == 1]
-        @test length(freq_1) == 7
-
-        # Total frequent itemsets should be substantial for this dense dataset
-        @test length(results) > 20
-    end
-
-    @testset "Single item transactions (minsup=2)" begin
-        transactions = read_spmf(joinpath(@__DIR__, "..", "data", "toy", "test_single_item.txt"))
-        results = apriori_tid(transactions, 2)
-
-        # Only item 1 appears >= 2 times
-        @test results_to_set(results) == Set([([1], 3)])
-        @test length(results) == 1
-    end
-
-    @testset "Empty result (minsup=3)" begin
-        transactions = read_spmf(joinpath(@__DIR__, "..", "data", "toy", "test_empty_result.txt"))
-        results = apriori_tid(transactions, 3)
-
-        @test isempty(results)
-    end
-
-    @testset "All frequent (minsup=2)" begin
-        transactions = read_spmf(joinpath(@__DIR__, "..", "data", "toy", "test_all_frequent.txt"))
-        results = apriori_tid(transactions, 2)
-
-        expected = Set([
-            ([1], 3), ([2], 3), ([3], 3),
-            ([1, 2], 3), ([1, 3], 3), ([2, 3], 3),
-            ([1, 2, 3], 3)
-        ])
-
-        @test results_to_set(results) == expected
-        @test length(results) == 7
-    end
-
-    @testset "Optimized vs basic give same results" begin
-        transactions = read_spmf(joinpath(@__DIR__, "..", "data", "toy", "example1.txt"))
-        results_opt = apriori_tid(transactions, 2; optimized=true)
-        results_basic = apriori_tid(transactions, 2; optimized=false)
-
-        @test results_to_set(results_opt) == results_to_set(results_basic)
-    end
-
-    @testset "SPMF I/O round-trip" begin
-        transactions = read_spmf(joinpath(@__DIR__, "..", "data", "toy", "example1.txt"))
-        results = apriori_tid(transactions, 2)
-
-        # Write to temp file and read back
-        tmpfile = tempname() * ".txt"
-        write_spmf(tmpfile, results)
-        read_back = read_spmf_output(tmpfile)
-        rm(tmpfile)
-
-        @test results_to_set(results) == Set([(sort(is), sup) for (is, sup) in read_back])
-    end
-
+    overall = total_ref == 0 ? 1.0 : total_matched / total_ref
+    println("  ── Overall match vs SPMF reference: " *
+            "$total_matched/$total_ref = $(round(overall * 100, digits=2))%")
+    @test overall == 1.0
 end

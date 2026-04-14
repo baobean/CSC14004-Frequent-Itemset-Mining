@@ -1,0 +1,143 @@
+\chapter[Ứng dụng thực tế]{Ứng dụng thực tế}
+\label{cp:application}
+
+Chương này trình bày một ứng dụng thực tế của cài đặt AprioriTID ở \autoref{cp:implementation}: \textbf{phân tích giỏ hàng} (\textit{market basket analysis}) trên bộ dữ liệu giao dịch bán lẻ \textbf{Retail}. Mục tiêu là chuyển tập frequent itemset thu được thành các \textbf{luật kết hợp} (\textit{association rule}) có thể diễn giải được bằng ba độ đo --- \textit{support}, \textit{confidence} và \textit{lift} --- rồi rút ra một số quan sát có giá trị kinh doanh.
+
+\section{Bài toán phân tích giỏ hàng}
+\label{sec:mba-problem}
+
+\paragraph{Phát biểu.} Cho một cơ sở dữ liệu giao dịch $D = \{t_1, t_2, \dots, t_n\}$, mỗi giao dịch là một tập con của tập item $I$. \textbf{Market Basket Analysis} đặt câu hỏi: \emph{những item nào có xu hướng được mua cùng nhau, và việc mua nhóm item $X$ có làm tăng xác suất mua nhóm item $Y$ hay không?} Câu trả lời được phát biểu dưới dạng các luật kết hợp
+\[
+    X \Rightarrow Y, \quad X, Y \subseteq I, \quad X \cap Y = \varnothing, \quad X \neq \varnothing, \ Y \neq \varnothing.
+\]
+
+\paragraph{Ba độ đo.} Mỗi luật $X \Rightarrow Y$ được đánh giá bởi ba đại lượng (\cite{AgrawalSrikant1994}):
+\begin{align}
+    \textit{support}(X \Rightarrow Y)    &= \frac{|\{t \in D : X \cup Y \subseteq t\}|}{|D|}, \\
+    \textit{confidence}(X \Rightarrow Y) &= \frac{\textit{support}(X \cup Y)}{\textit{support}(X)}, \\
+    \textit{lift}(X \Rightarrow Y)       &= \frac{\textit{confidence}(X \Rightarrow Y)}{\textit{support}(Y) / |D|}.
+\end{align}
+trong đó $\textit{support}(Z)$ là số giao dịch chứa tập $Z$. \textit{Support} đo tần suất tuyệt đối, \textit{confidence} đo xác suất có điều kiện $\Pr(Y \mid X)$, còn \textit{lift} đo mức tương quan so với giả thiết độc lập: $\textit{lift} = 1$ nghĩa là $X$ và $Y$ độc lập, $\textit{lift} > 1$ nghĩa là chúng đồng xuất hiện thường xuyên hơn ngẫu nhiên, và $\textit{lift} < 1$ nghĩa là chúng kị nhau.
+
+\paragraph{Liên hệ với AprioriTID.} Việc sinh luật kết hợp tách làm hai bước kinh điển: (i) khai phá \textbf{tất cả frequent itemset} tại ngưỡng \textit{minsup} --- đây chính là đầu ra của AprioriTID; (ii) với mỗi itemset $F$ có $|F| \ge 2$, liệt kê mọi tập con riêng $X \subset F$ và xét luật $X \Rightarrow F \setminus X$. Vì $F$ và cả hai tập con $X$, $F \setminus X$ đều là itemset, giá trị \textit{confidence} được tính trực tiếp bằng phép chia hai số đếm đã có trong kết quả của AprioriTID mà không cần quét lại dữ liệu.
+
+\section{Bộ dữ liệu Retail}
+\label{sec:mba-data}
+
+Retail là bộ giao dịch bán lẻ công khai của một siêu thị Bỉ, được phát hành bởi Tom Brijs và thường được dùng làm bộ chuẩn trong các nghiên cứu khai phá luật kết hợp (\cite{BrijsRetail1999}). \autoref{tab:retail-stats} tóm tắt các thông số cơ bản đo trực tiếp trên file \texttt{retail.txt}.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Thống kê cơ bản của bộ dữ liệu Retail.}
+    \label{tab:retail-stats}
+    \begin{tabular}{l|r}
+        \hline
+        \textbf{Thông số} & \textbf{Giá trị} \\ \hline
+        Số giao dịch $|D|$       & 88\,162 \\
+        Số item phân biệt $|I|$  & 16\,470 \\
+        Độ dài giao dịch trung bình $\bar{w}$ & $\approx$\,10.3 \\
+        Mật độ $\bar{w}/|I|$     & $\approx 6.3 \times 10^{-4}$ \\ \hline
+    \end{tabular}
+\end{table}
+
+Khác với Chess hay Mushrooms, Retail là một bộ dữ liệu \textbf{rất thưa}: số lượng item gấp hàng ngàn lần độ dài giao dịch trung bình. Đặc điểm này làm cho phần lớn các item xuất hiện rất hiếm, và ngay cả tại ngưỡng \textit{minsup} tương đối thấp như $0.5\%$ ($\text{abs} \approx 441$), số frequent itemset vẫn giữ ở mức vài trăm --- rất phù hợp để minh họa việc sinh luật kết hợp mà không bị lạm phát đầu ra.
+
+\section{Quy trình và cài đặt}
+\label{sec:mba-pipeline}
+
+Toàn bộ mã nguồn cho ứng dụng nằm trong thư mục \texttt{application/}, tách biệt với thư mục \texttt{src/} chứa thuật toán gốc:
+
+\begin{itemize}
+    \item \texttt{application/market\_basket.jl}: định nghĩa struct \texttt{AssociationRule}, hàm sinh luật từ tập frequent itemset \texttt{generate\_rules}, hàm \texttt{write\_rules\_csv} xuất luật ra CSV, và hàm tiện ích \texttt{top\_rules\_by} để trích top-$n$ luật theo một độ đo nhất định.
+    \item \texttt{application/run\_retail.jl}: kịch bản CLI, đọc \texttt{retail.txt}, chạy AprioriTID ở \textit{minsup} chỉ định, sinh luật ở \textit{minconf} chỉ định và in bản tóm tắt ra stdout.
+\end{itemize}
+
+Cả hai file dùng lại trực tiếp các file trong \texttt{src/} bằng \texttt{include}, không lặp lại logic thuật toán.
+
+\paragraph{Thuật toán sinh luật.} \texttt{generate\_rules} duyệt mọi itemset $F$ có $|F| \ge 2$ trong đầu ra của AprioriTID, rồi với mỗi $F$ liệt kê $2^{|F|} - 2$ tập con riêng không rỗng bằng \textbf{bitmask} --- với bit thứ $i$ bật nghĩa là item $F[i]$ thuộc tập tiền đề $X$, bit tắt nghĩa là thuộc hậu đề $Y$. Các support $\textit{sup}(X)$, $\textit{sup}(Y)$, $\textit{sup}(F)$ được tra trong dict \texttt{support\_of} xây sẵn từ kết quả AprioriTID, nên chi phí tổng thể chỉ là $O\!\left(\sum_{F} 2^{|F|}\right)$ phép tra. Vì các itemset mà AprioriTID trả về đều ngắn (trong thực nghiệm không quá $k=4$), chi phí sinh luật hoàn toàn không đáng kể so với chi phí FIM --- như sẽ thấy ở \autoref{sec:mba-results}.
+
+\paragraph{Lệnh chạy.} Toàn bộ pipeline được gói trong một lệnh duy nhất:
+\begin{minted}{text}
+julia --project application/run_retail.jl 500 0.30
+\end{minted}
+trong đó \texttt{500} là \textit{minsup} tuyệt đối ($\approx 0.567\%$) và \texttt{0.30} là ngưỡng \textit{confidence} tối thiểu. Kết quả được ghi vào \texttt{experiment\_results/retail\_rules.csv}.
+
+\section{Kết quả phân tích}
+\label{sec:mba-results}
+
+Với $\textit{minsup} = 500$ và $\textit{minconf} = 0.30$, cài đặt cho ra \textbf{468 frequent itemset} trong đó \textbf{283} có $|F| \ge 2$, và sinh ra \textbf{406 luật kết hợp} thoả mãn ngưỡng \textit{confidence}. Tổng thời gian chạy: 3549\,ms cho bước FIM và chỉ 0.2\,ms cho bước sinh luật --- xác nhận khẳng định rằng chi phí sinh luật gần như miễn phí khi đã có frequent itemset.
+
+\subsection{Top luật theo confidence}
+
+\autoref{tab:retail-top-conf} liệt kê 10 luật có \textit{confidence} cao nhất. Cả 10 luật đều có hậu đề là \emph{item 39} --- item phổ biến nhất trong Retail ($\textit{sup}(\{39\}) \approx 57\%$). Đây là hiện tượng kinh điển khi sinh luật không lọc theo \textit{lift}: một item có tần suất nền rất cao sẽ xuất hiện trong gần như mọi giao dịch, kéo theo \textit{confidence} của bất kỳ luật nào trỏ về nó đều xấp xỉ xác suất nền của chính nó.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Top 10 luật theo \textit{confidence} tại $\textit{minsup} = 500$, $\textit{minconf} = 0.30$.}
+    \label{tab:retail-top-conf}
+    \begin{tabular}{l|r|r|r}
+        \hline
+        \textbf{Luật} & \textbf{sup} & \textbf{conf} & \textbf{lift} \\ \hline
+        $\{40, 49, 111\} \Rightarrow \{39\}$ & 0.0117 & 0.994 & 5.62 \\
+        $\{40, 42, 111\} \Rightarrow \{39\}$ & 0.0058 & 0.992 & 5.61 \\
+        $\{40, 49, 171\} \Rightarrow \{39\}$ & 0.0135 & 0.989 & 5.59 \\
+        $\{40, 111\}      \Rightarrow \{39\}$ & 0.0197 & 0.989 & 5.59 \\
+        $\{40, 372\}      \Rightarrow \{39\}$ & 0.0060 & 0.989 & 5.59 \\
+        $\{49, 171\}      \Rightarrow \{39\}$ & 0.0174 & 0.988 & 5.58 \\
+        $\{42, 171\}      \Rightarrow \{39\}$ & 0.0090 & 0.986 & 5.58 \\
+        $\{49, 111\}      \Rightarrow \{39\}$ & 0.0154 & 0.986 & 5.58 \\
+        $\{38, 49\}       \Rightarrow \{39\}$ & 0.0063 & 0.986 & 5.57 \\
+        $\{40, 42, 171\}  \Rightarrow \{39\}$ & 0.0070 & 0.986 & 5.57 \\ \hline
+    \end{tabular}
+\end{table}
+
+Mặc dù \textit{confidence} của cả 10 luật đều xấp xỉ $0.99$, \textit{lift} vẫn rơi vào khoảng $5.6$, nghĩa là xác suất xuất hiện của item 39 \emph{có điều kiện} gấp $5.6$ lần so với xác suất nền. Quan sát này cho thấy: trong Retail tồn tại một tập lõi $\{39, 40, 42, 48, 49, 111, 171\}$ với các item cực kỳ tương quan --- nhiều khả năng đây là các mặt hàng nhu yếu phẩm xuất hiện đồng thời trong phần lớn hoá đơn.
+
+\subsection{Top luật theo lift}
+
+\autoref{tab:retail-top-lift} cho một góc nhìn rất khác. Hai luật đứng đầu bảng ---
+$\{16011\} \Leftrightarrow \{16012\}$ và $\{271\} \Leftrightarrow \{272\}$ --- có \textit{support} rất nhỏ ($< 1\%$), \textit{confidence} khiêm tốn, nhưng \textit{lift} cực lớn ($65.19$ và $16.51$). Các item trong các luật này hầu như chỉ xuất hiện cùng nhau: biết một item, xác suất thấy item kia tăng lên hàng chục lần.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Top 10 luật theo \textit{lift}. Các cặp song hướng ($A \Rightarrow B$ và $B \Rightarrow A$) được giữ nguyên để thấy sự bất đối xứng về confidence.}
+    \label{tab:retail-top-lift}
+    \begin{tabular}{l|r|r|r}
+        \hline
+        \textbf{Luật} & \textbf{sup} & \textbf{conf} & \textbf{lift} \\ \hline
+        $\{16011\} \Rightarrow \{16012\}$ & 0.0074 & 0.495 & 65.19 \\
+        $\{16012\} \Rightarrow \{16011\}$ & 0.0074 & 0.973 & 65.19 \\
+        $\{271\}   \Rightarrow \{272\}$   & 0.0077 & 0.392 & 16.51 \\
+        $\{272\}   \Rightarrow \{271\}$   & 0.0077 & 0.325 & 16.51 \\
+        $\{37, 42\}   \Rightarrow \{39, 40\}$ & 0.0063 & 0.790 & 6.73 \\
+        $\{49, 171\}  \Rightarrow \{39, 40\}$ & 0.0135 & 0.766 & 6.53 \\
+        $\{42, 171\}  \Rightarrow \{39, 40\}$ & 0.0070 & 0.764 & 6.51 \\
+        $\{40, 111\}  \Rightarrow \{39, 49\}$ & 0.0117 & 0.586 & 6.50 \\
+        $\{37, 49\}   \Rightarrow \{39, 40\}$ & 0.0123 & 0.763 & 6.50 \\
+        $\{42, 111\}  \Rightarrow \{39, 40\}$ & 0.0058 & 0.755 & 6.43 \\ \hline
+    \end{tabular}
+\end{table}
+
+Quan sát \emph{bất đối xứng} giữa hai hướng là đáng chú ý. Cặp $\{16011, 16012\}$ có $\textit{conf}(16011 \Rightarrow 16012) = 0.495$ nhưng $\textit{conf}(16012 \Rightarrow 16011) = 0.973$. Điều này cho biết item 16012 gần như luôn được mua kèm 16011, nhưng không ngược lại --- một tín hiệu điển hình của quan hệ \emph{mặt hàng phụ kiện $\to$ mặt hàng chính} (chẳng hạn \emph{pin cho đèn pin}: có pin thì chưa chắc có đèn, nhưng có đèn thì thường có pin).
+
+\subsection{Thảo luận kinh doanh}
+
+Từ hai bảng trên có thể rút ra ba nhóm quan sát có giá trị ứng dụng thực tế:
+
+\begin{enumerate}
+    \item \textbf{Lõi nhu yếu phẩm.} Tập $\{39, 40, 42, 48, 49, 111, 171\}$ tạo thành một nhóm item đồng xuất hiện rất mạnh, cả về \textit{support} lẫn \textit{lift}. Trong thực tế, đây là các mặt hàng nên được bố trí sao cho khách hàng đi qua cả nhóm trong cùng một hành trình mua sắm, hoặc được gộp làm tiêu chí đánh giá \emph{độ đầy đủ} của một giỏ hàng trung bình.
+    \item \textbf{Cặp phụ kiện $\to$ mặt hàng chính.} Các cặp \textit{lift} cao nhưng \textit{support} thấp (như $\{16011, 16012\}$, $\{271, 272\}$) gợi ý cơ chế \emph{gợi ý chéo} (\textit{cross-sell}): khi khách thêm 16012 vào giỏ, hệ thống có thể đề xuất kiểm tra xem có cần 16011 hay không, vì hai item gần như luôn đi đôi.
+    \item \textbf{Cảnh báo bẫy confidence.} Nếu xếp hạng luật chỉ bằng \textit{confidence}, toàn bộ top bảng sẽ bị chiếm bởi các luật trỏ về item 39 --- một điều thực ra không mang thông tin gì (item 39 xuất hiện ở hầu hết giao dịch). Trong pipeline sản phẩm, việc chặn dưới \textit{lift} (chẳng hạn $\textit{lift} > 2$) là cần thiết để loại bỏ các luật trivial như vậy.
+\end{enumerate}
+
+\section{Nhận xét tổng quan}
+\label{sec:mba-discussion}
+
+Ứng dụng trên là một minh chứng đầy đủ cho luận điểm: \emph{AprioriTID không phải là đích đến, mà là bước trung gian}. Toàn bộ chi phí tính toán tập trung ở bước FIM (3549\,ms), còn bước sinh luật chỉ mất 0.2\,ms --- tỷ lệ gần $14\,000 \colon 1$. Điều này có hai hệ quả quan trọng:
+
+\begin{itemize}
+    \item Một lần chạy FIM đủ để thử nghiệm nhiều cấu hình $(\textit{minconf}, \text{top-}n)$ khác nhau mà không phải chạy lại thuật toán gốc. Trong notebook \texttt{notebooks/demo.ipynb}, đặc điểm này được tận dụng để so sánh phân bố luật tại nhiều mức \textit{minconf} trong vòng vài giây.
+    \item Chiến lược tối ưu cho phân tích giỏ hàng nên tập trung vào phía FIM: giảm \textit{minsup}, tăng kích thước dữ liệu hay thay bằng thuật toán sinh tập phụ (\emph{closed hay maximal itemset}) đều tác động đến bước tốn kém này chứ không phải bước sinh luật.
+\end{itemize}
+
+Một hạn chế đáng lưu ý: AprioriTID trả về \textbf{tất cả} frequent itemset, bao gồm cả các itemset ``dư'' (supersets có cùng support với một subset của nó). Với Retail ở \textit{minsup} thấp hơn (ví dụ $100$), số itemset có thể vượt vài ngàn, và số luật sinh ra tăng theo hàm mũ theo $|F|$ lớn nhất. Trong các phiên bản tiếp theo, thay AprioriTID bằng một biến thể khai phá \emph{closed frequent itemset} (như CHARM, \cite{ZakiHsiao2002CHARM}) hoặc \emph{maximal frequent itemset} (như MAFIA, \cite{Burdick2001MAFIA}) sẽ thu gọn đầu ra mà không mất thông tin --- đây là hướng mở rộng tự nhiên cho ứng dụng này.

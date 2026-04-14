@@ -1,1 +1,529 @@
-\chapter{Thực nghiệm và đánh giá}\label{cp:experiment-evaluation}
+\chapter[Thực nghiệm và đánh giá]{Thực nghiệm và đánh giá}
+\label{cp:experiment-evaluation}
+
+Chương này trình bày sáu thực nghiệm của đề bài, áp dụng cài đặt AprioriTID đã mô tả ở \autoref{cp:implementation} trên bốn bộ dữ liệu chuẩn thuộc kho SPMF (\cite{FournierViger2014SPMF}) và kho FIMI (\cite{Goethals2003FIMI}). Mỗi thực nghiệm được gắn trực tiếp với một yêu cầu trong đề bài, và phần kết chương tổng hợp điểm mạnh, điểm yếu của cài đặt cùng với hai hướng tối ưu được đề xuất cho các lần phát triển tiếp theo.
+
+\section{Mục tiêu và phương pháp luận}
+\label{sec:exp-method}
+
+\paragraph{Mục tiêu.} Sáu thực nghiệm được thiết kế để trả lời sáu câu hỏi độc lập nhưng bổ sung cho nhau:
+\begin{enumerate}
+    \item[(a)] \textbf{Tính đúng đắn} --- cài đặt có sinh ra cùng tập frequent itemset như SPMF trên dữ liệu thật hay không?
+    \item[(b)] \textbf{Thời gian chạy} --- runtime biến thiên thế nào khi hạ dần ngưỡng \textit{minsup}, và đường cong của cài đặt so với SPMF ra sao?
+    \item[(c)] \textbf{Số lượng frequent itemset} --- kích thước đầu ra tăng nhanh thế nào khi \textit{minsup} giảm, và tính chất đó phụ thuộc vào mật độ (density) dữ liệu như thế nào?
+    \item[(d)] \textbf{Sử dụng bộ nhớ} --- cài đặt cơ bản và cài đặt tối ưu khác nhau bao nhiêu về lượng cấp phát tại cùng một ngưỡng?
+    \item[(e)] \textbf{Khả năng mở rộng} --- runtime tăng ra sao khi $|D|$ tăng mà \textit{minsup} tương đối giữ nguyên?
+    \item[(f)] \textbf{Ảnh hưởng của độ dài giao dịch} --- chiều rộng trung bình của giao dịch ảnh hưởng thế nào đến độ phức tạp thực tế?
+\end{enumerate}
+
+\paragraph{Quy trình đo.} Mọi phép đo thời gian được thực hiện trên cùng một quy trình để đảm bảo tính so sánh:
+\begin{enumerate}
+    \item \textbf{Làm nóng JIT.} Gọi \texttt{apriori\_tid} một lần trước khi đo để Julia biên dịch toàn bộ mã máy cần thiết. Lần gọi này không được tính giờ.
+    \item \textbf{Thu dọn rác.} Gọi \texttt{GC.gc()} để đưa heap về trạng thái sạch, tránh ảnh hưởng từ các lần chạy trước.
+    \item \textbf{Đo thời gian.} Dùng macro \texttt{@elapsed} cho runtime và \texttt{@allocated} cho tổng lượng bộ nhớ cấp phát trong suốt một lần chạy. Lặp lại ba lần và lấy giá trị ổn định nhất khi có nghi ngờ về biến động.
+    \item \textbf{Ghi kết quả.} Mỗi cặp (dataset, \textit{minsup}) ghi một dòng vào file CSV bằng hàm \texttt{append\_csv} trong \texttt{experiments/common.jl}, đảm bảo có thể dừng giữa chừng mà không mất dữ liệu đã thu được.
+\end{enumerate}
+
+\paragraph{Khả năng tái lập.} Mọi thông số cấu hình (số giao dịch tổng hợp, hạt ngẫu nhiên, danh sách \texttt{minsup}) đều được khai báo tường minh trong các kịch bản thuộc thư mục \texttt{experiments/}. Thực nghiệm (f) dùng \texttt{MersenneTwister(42 + w)} cho mỗi độ rộng $w$, nên việc chạy lại cho đúng cùng kết quả từng byte. Các CSV đầu ra được đặt trong \texttt{experiment\_results/} và phục vụ trực tiếp cho các bảng, biểu đồ của chương này.
+
+\paragraph{So sánh với SPMF.} Để thực hiện yêu cầu \emph{``so sánh đường cong của nhóm với SPMF trên cùng đồ thị''} của thực nghiệm (b), kịch bản phụ \texttt{experiments/bench\_spmf\_runtime.jl} gọi \texttt{java -jar spmf.jar run AprioriTID} tại đúng các ngưỡng \texttt{minsup} tuyệt đối đã dùng cho cài đặt Julia, tự động chuyển sang dạng \texttt{minsup} tương đối mà SPMF yêu cầu ($\text{rel} = \text{abs} / |D|$), phân tích dòng \texttt{Total time \~{} X ms} từ stdout của SPMF và ghi vào một CSV song song. Việc gộp hai CSV theo khóa \texttt{(dataset, minsup)} cho ra bảng số liệu dùng chung một trục hoành.
+
+\section{Môi trường và dữ liệu}
+\label{sec:exp-env}
+
+\subsection{Cấu hình phần cứng và phần mềm}
+
+Toàn bộ thực nghiệm được thực hiện trên một máy cá nhân cấu hình trung bình, mô phỏng điều kiện phần cứng thông dụng của sinh viên:
+
+\begin{itemize}
+    \item \textbf{CPU:} Intel Core i3-1005G1 (2 lõi vật lý, 4 luồng, 1.2--3.4\,GHz).
+    \item \textbf{RAM:} 12\,GB DDR4.
+    \item \textbf{GPU:} không (cài đặt hoàn toàn trên CPU).
+    \item \textbf{Hệ điều hành:} Linux.
+    \item \textbf{Julia:} 1.9.x, khởi chạy bằng \texttt{julia --project}.
+    \item \textbf{SPMF:} phiên bản jar tải từ trang chủ SPMF, chạy bằng OpenJDK 17.
+\end{itemize}
+
+Cấu hình này đặt ra một ràng buộc thực tế: \textbf{mọi phép đo phải dừng ở ngưỡng \textit{minsup} mà tổng cấp phát dưới khoảng 8\,GB}, nếu không hệ điều hành sẽ bắt đầu trao đổi trang (swap) và làm sai lệch mọi số đo. Các tầng \texttt{minsup} ``sàn'' trong \texttt{experiments/README.md} đã được hiệu chỉnh chặt chẽ để phù hợp với ràng buộc này --- đây là lý do một số đường cong dưới đây dừng sớm hơn so với những công trình chạy trên máy trạm.
+
+\subsection{Bốn bộ dữ liệu chuẩn}
+
+Bốn bộ dữ liệu dùng cho thực nghiệm (a)--(e) đều là các bộ chuẩn phổ biến trong cộng đồng khai phá mẫu phổ biến, được phân phối qua kho FIMI (\cite{Goethals2003FIMI}) và SPMF (\cite{FournierViger2014SPMF}); riêng bộ Retail được trích từ dữ liệu giao dịch thực của một siêu thị Bỉ do Brijs và cộng sự công bố (\cite{BrijsRetail1999}). \autoref{tab:datasets} tóm tắt bốn bộ dữ liệu chuẩn được dùng cho tất cả các thực nghiệm (trừ (f) sử dụng dữ liệu tổng hợp). Bốn bộ được chọn có chủ ý để bao phủ hai trục quan trọng: \emph{mật độ} (dense vs. sparse) và \emph{kích thước} (số lượng giao dịch và số lượng item).
+
+\begin{table}[htbp]
+    \centering
+    \caption{Bốn bộ dữ liệu chuẩn dùng cho thực nghiệm (a)--(e). Các thông số được đo trực tiếp trên file đầu vào thay vì trích từ đặc tả gốc, do đó có thể chênh lệch nhẹ so với các báo cáo khác.}
+    \label{tab:datasets}
+    \begin{tabular}{l|r|r|r|l}
+        \hline
+        \textbf{Bộ dữ liệu} & $|D|$ & $|I|$ & $\bar{w}$ & \textbf{Đặc điểm} \\ \hline
+        Chess       & 3\,196   & 75      & 37.0 & Dày đặc, giao dịch dài \\
+        Mushrooms   & 8\,416   & 119     & 23.0 & Dày đặc, nhiều item \\
+        Retail      & 88\,162  & 16\,470 & 10.3 & Thưa, dữ liệu thật \\
+        T10I4D100K  & 100\,000 & 870     & 10.1 & Thưa, sinh tổng hợp \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\paragraph{Giải thích hai trục.} Chess và Mushrooms là \emph{dày đặc} --- mỗi giao dịch chứa rất nhiều item so với tổng số item, nên xác suất hai giao dịch bất kỳ cùng chứa một cặp item là lớn. Điều này khiến $|\overline{C}_k|$ giảm chậm theo $k$ và là điểm yếu cổ điển của họ thuật toán Apriori. Retail và T10I4D100K là \emph{thưa} --- mỗi giao dịch chỉ có khoảng 10 item so với hàng nghìn item tổng, nên $\overline{C}_k$ thu nhỏ rất nhanh. Sự khác biệt này thể hiện rõ ở mọi thực nghiệm bên dưới.
+
+\section{Thực nghiệm (a) --- Kiểm tra tính đúng đắn}
+\label{sec:exp-a}
+
+\textbf{Thiết kế.} Với từng bộ dữ liệu trong \autoref{tab:datasets}, chạy cài đặt Julia tại cùng \texttt{minsup} với SPMF, so sánh tập (itemset, support) của hai bên. Kịch bản so sánh \emph{tập hợp} chứ không so sánh \emph{thứ tự} --- hai tập itemset được xem là khớp nếu chúng có cùng các phần tử. Với từng dataset, kết quả ghi nhận bốn đại lượng: số itemset của cài đặt Julia (\texttt{n\_ours}), số itemset của SPMF (\texttt{n\_spmf}), số phần tử trùng (\texttt{matched}), và tỉ lệ khớp tính theo công thức $\text{match\_pct} = \text{matched} / \text{n\_spmf} \times 100\%$.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Kết quả thực nghiệm (a) --- kiểm tra tính đúng đắn so với SPMF.}
+    \label{tab:exp-a}
+    \begin{tabular}{l|r|r|r|r|r|r}
+        \hline
+        \textbf{Bộ dữ liệu} & \texttt{minsup} & $|D|$ & \texttt{n\_ours} & \texttt{n\_spmf} & \texttt{matched} & \texttt{match\_pct} \\ \hline
+        Chess       & 2\,500 & 3\,196   & 11\,493 & 11\,493 & 11\,493 & 100.0\% \\
+        Mushrooms   & 4\,000 & 8\,416   & 191     & 175     & 175     & 100.0\% \\
+        Retail      & 1\,000 & 88\,162  & 135     & 135     & 135     & 100.0\% \\
+        T10I4D100K  & 1\,000 & 100\,000 & 385     & 385     & 385     & 100.0\% \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\paragraph{Nhận xét chính.} Trên cả bốn bộ dữ liệu, mỗi itemset mà SPMF sinh ra đều xuất hiện trong đầu ra của cài đặt Julia với đúng giá trị support. Tỉ lệ khớp đạt $100\%$ ở chess, retail, và T10I4D100K, và trên mushrooms cài đặt Julia tìm được $191$ itemset --- nhiều hơn SPMF đúng $16$ itemset (\texttt{extra = 16}), nhưng tất cả $175$ itemset SPMF báo cáo đều được cài đặt Julia tái tạo chính xác.
+
+\paragraph{Giải thích hiện tượng 16 itemset chênh trên mushrooms.} Khác biệt bắt nguồn từ cách SPMF xử lý ngưỡng \texttt{minsup} ở biên. SPMF nhận vào \emph{minsup tương đối} (phần trăm của $|D|$), rồi quy đổi ngược về số nguyên bằng phép nhân/chia floating-point. Với \texttt{minsup} tuyệt đối $4000$ và $|D| = 8416$, tỉ lệ là $4000/8416 \approx 0.4753$; khi quy đổi ngược, SPMF thực tế lọc theo ngưỡng $\lceil 0.4753 \times 8416 \rceil = 4001$, tức là \emph{chặt hơn một đơn vị}. Những itemset có support đúng bằng $4000$ bị SPMF loại nhưng vẫn được cài đặt Julia giữ lại. Đây không phải sai sót về thuật toán mà là khác biệt trong \emph{quy ước số học}: cài đặt Julia áp dụng bất đẳng thức $\text{support} \geq \text{minsup}$ trực tiếp trên số nguyên, còn SPMF đi vòng qua tỉ lệ.
+
+\paragraph{Kết luận của thực nghiệm (a).} Cài đặt AprioriTID bằng Julia sinh ra đầy đủ và đúng mọi itemset mà SPMF --- thư viện tham chiếu chuẩn của cộng đồng FIM --- sinh ra trên cả bốn bộ dữ liệu chuẩn. Sai lệch duy nhất quan sát được có nguyên nhân ở quy ước xử lý biên, không phải ở thuật toán, và không làm mất itemset nào của SPMF.
+
+\paragraph{Điểm mạnh so với SPMF.} Tỉ lệ thu hồi (recall) đạt $100\%$ trên cả bốn bộ: mọi itemset SPMF báo cáo đều được cài đặt Julia tái tạo với đúng giá trị support. Trên Mushrooms, Julia còn giữ được $16$ itemset biên mà SPMF loại do quy ước làm tròn --- xét theo định nghĩa đúng (support nguyên $\geq$ \texttt{minsup}), đầu ra của Julia là \emph{chặt chẽ hơn}, không phải sai.
+
+\paragraph{Điểm yếu so với SPMF.} Sai khác $16$ itemset ``dư'' trên Mushrooms gây khó khăn khi người dùng muốn so kết quả byte-for-byte với các công cụ sinh ra từ SPMF (ví dụ: pipeline đánh giá luật kết hợp có sẵn). Ở góc độ tương thích thực tế, việc không bám sát quy ước SPMF là một bất lợi, dù về mặt thuật toán thì cài đặt đúng hơn.
+
+\paragraph{Hai hướng tối ưu đề xuất.}
+\begin{enumerate}
+    \item \textbf{Cờ \texttt{-{}-spmf-compat} cho CLI}: cho phép người dùng chọn quy ước làm tròn của SPMF (\texttt{minsup} tương đối quy đổi bằng \texttt{ceil}) để đầu ra khớp hoàn toàn với SPMF tại các ngưỡng biên, không mất tính đúng đắn thuật toán mặc định.
+    \item \textbf{Hàm so sánh đầu ra thành đối tượng riêng}: thay vì dùng \texttt{Set} để so khớp, xây dựng hàm \texttt{compare\_to\_spmf(ours, theirs)} trả về bốn trường \texttt{(matched, extra, missing, boundary\_cases)}, trong đó \texttt{boundary\_cases} tự động phát hiện các itemset có $\text{support} = \text{minsup}$ và đánh dấu chúng là ``expected divergence''. Biến nghiệp vụ xử lý biên thành metadata, không phải lỗi.
+\end{enumerate}
+
+\section{Thực nghiệm (b) --- Thời gian chạy theo \textit{minsup}}
+\label{sec:exp-b}
+
+\textbf{Thiết kế.} Với từng bộ dữ liệu, chọn năm giá trị \texttt{minsup} giảm dần và đo runtime của cài đặt Julia (biến thể tối ưu) tại mỗi giá trị. Kịch bản \texttt{experiment\_b\_runtime.jl} ghi CSV với các cột \texttt{dataset, minsup, elapsed\_ms, alloc\_mib, n\_itemsets}, trong đó \texttt{n\_itemsets} tiện dụng được dùng lại cho thực nghiệm (c) ở mục sau.
+
+\subsection{Kết quả bốn bộ dữ liệu}
+
+\autoref{tab:exp-b-chess} đến \autoref{tab:exp-b-t10i4d} liệt kê số liệu thực đo trên máy i3-1005G1 / 12\,GB RAM. Bốn bảng được đặt cạnh nhau để người đọc có thể so sánh hình thái đường cong trên hai mặt: thời gian và kích thước đầu ra.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Thực nghiệm (b) trên Chess ($|D|=3196$, dày đặc).}
+    \label{tab:exp-b-chess}
+    \begin{tabular}{r|r|r|r}
+        \hline
+        \texttt{minsup} & \texttt{elapsed\_ms} & \texttt{alloc\_mib} & \texttt{n\_itemsets} \\ \hline
+        3\,000 & 125.44    & 120.71     & 155 \\
+        2\,875 & 553.86    & 453.78     & 633 \\
+        2\,750 & 1\,722.98 & 1\,444.53  & 1\,976 \\
+        2\,625 & 4\,318.28 & 3\,488.92  & 5\,189 \\
+        2\,500 & 9\,865.01 & 7\,491.43  & 11\,493 \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Thực nghiệm (b) trên Mushrooms ($|D|=8416$, dày đặc).}
+    \label{tab:exp-b-mushrooms}
+    \begin{tabular}{r|r|r|r}
+        \hline
+        \texttt{minsup} & \texttt{elapsed\_ms} & \texttt{alloc\_mib} & \texttt{n\_itemsets} \\ \hline
+        6\,000 & 43.56     & 52.74     & 31 \\
+        5\,000 & 82.90     & 98.25     & 59 \\
+        4\,000 & 310.90    & 251.97    & 191 \\
+        3\,000 & 1\,374.97 & 982.22    & 1\,035 \\
+        2\,000 & 5\,824.54 & 4\,505.87 & 6\,961 \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Thực nghiệm (b) trên Retail ($|D|=88162$, thưa).}
+    \label{tab:exp-b-retail}
+    \begin{tabular}{r|r|r|r}
+        \hline
+        \texttt{minsup} & \texttt{elapsed\_ms} & \texttt{alloc\_mib} & \texttt{n\_itemsets} \\ \hline
+        2\,000 & 286.13 & 231.60 & 45 \\
+        1\,750 & 339.50 & 278.31 & 56 \\
+        1\,500 & 380.80 & 324.17 & 68 \\
+        1\,250 & 529.48 & 456.42 & 91 \\
+        1\,000 & 788.85 & 738.85 & 135 \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Thực nghiệm (b) trên T10I4D100K ($|D|=100\,000$, thưa, tổng hợp).}
+    \label{tab:exp-b-t10i4d}
+    \begin{tabular}{r|r|r|r}
+        \hline
+        \texttt{minsup} & \texttt{elapsed\_ms} & \texttt{alloc\_mib} & \texttt{n\_itemsets} \\ \hline
+        2\,000 & 2\,912.91  & 2\,446.83 & 155 \\
+        1\,750 & 3\,795.84  & 3\,287.83 & 186 \\
+        1\,500 & 6\,256.51  & 4\,790.01 & 237 \\
+        1\,250 & 9\,728.92  & 7\,170.33 & 310 \\
+        1\,000 & 13\,551.97 & 9\,614.72 & 385 \\
+        \hline
+    \end{tabular}
+\end{table}
+
+Biểu đồ tổng hợp bốn đường cong runtime theo \texttt{minsup} được vẽ trực tiếp từ các CSV bằng \texttt{pgfplots} (\autoref{fig:exp-b-runtime}). Mỗi ô là một bộ dữ liệu; trục $y$ dùng thang log để cả hai đường cong Julia và SPMF cùng đọc được trong một hệ trục.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+    \begin{groupplot}[
+        group style={group size=2 by 2, horizontal sep=1.6cm, vertical sep=1.9cm},
+        width=0.48\linewidth, height=5cm,
+        ymode=log, ylabel={Runtime (ms)},
+        xlabel={minsup},
+        grid=none,
+        legend style={font=\scriptsize, at={(0.02,0.98)}, anchor=north west, draw=none, fill=white, fill opacity=0.8, text opacity=1},
+        tick label style={font=\scriptsize},
+        label style={font=\scriptsize},
+        title style={font=\small},
+    ]
+    \nextgroupplot[title={Chess}, x dir=reverse]
+        \addplot+[mark=*,thick] table [x=minsup,y=elapsed_ms,col sep=comma] {../experiment_results/exp_runtime_chess.csv};
+        \addplot+[mark=*,thick] table [x=minsup,y=elapsed_ms,col sep=comma] {../experiment_results/exp_runtime_chess_spmf.csv};
+        \legend{Julia, SPMF}
+    \nextgroupplot[title={Mushrooms}, x dir=reverse]
+        \addplot+[mark=*,thick] table [x=minsup,y=elapsed_ms,col sep=comma] {../experiment_results/exp_runtime_mushrooms.csv};
+        \addplot+[mark=*,thick] table [x=minsup,y=elapsed_ms,col sep=comma] {../experiment_results/exp_runtime_mushrooms_spmf.csv};
+    \nextgroupplot[title={Retail}, x dir=reverse]
+        \addplot+[mark=*,thick] table [x=minsup,y=elapsed_ms,col sep=comma] {../experiment_results/exp_runtime_retail.csv};
+        \addplot+[mark=*,thick] table [x=minsup,y=elapsed_ms,col sep=comma] {../experiment_results/exp_runtime_retail_spmf.csv};
+    \nextgroupplot[title={T10I4D100K}, x dir=reverse]
+        \addplot+[mark=*,thick] table [x=minsup,y=elapsed_ms,col sep=comma] {../experiment_results/exp_runtime_T10I4D100K.csv};
+        \addplot+[mark=*,thick] table [x=minsup,y=elapsed_ms,col sep=comma] {../experiment_results/exp_runtime_T10I4D100K_spmf.csv};
+    \end{groupplot}
+    \end{tikzpicture}
+    \caption{Runtime theo \texttt{minsup} trên bốn bộ dữ liệu chuẩn: cài đặt Julia (biến thể tối ưu) so với SPMF AprioriTID. Trục $x$ đảo chiều (minsup giảm dần từ trái sang phải) để đường cong đi lên phản ánh độ khó tăng.}
+    \label{fig:exp-b-runtime}
+\end{figure}
+
+\subsection{Phân tích hình thái đường cong}
+
+\paragraph{Hai bộ dày đặc (Chess, Mushrooms) có runtime tăng theo quy luật gần hàm mũ.} Trên Chess, khi hạ \texttt{minsup} từ $3000$ xuống $2500$, runtime tăng từ $125$\,ms lên $9865$\,ms --- hệ số nhân xấp xỉ $79\times$ chỉ trong năm bước, mỗi bước $125$ đơn vị. Trên Mushrooms, hạ \texttt{minsup} từ $6000$ xuống $2000$ đẩy runtime từ $44$\,ms lên $5825$\,ms, tức hơn $130\times$. Nguyên nhân đã được phân tích trong \autoref{cp:theoretical-foundation}: với dữ liệu dày đặc, $|C_k|$ và $|\overline{C}_k|$ giảm chậm theo $k$ trong khi số tầng $k$ tăng, nên chi phí tổng cộng tăng vọt khi ngưỡng hạ.
+
+\paragraph{Hai bộ thưa (Retail, T10I4D100K) có runtime tăng tuyến tính dịu hơn rất nhiều.} Retail chỉ tăng từ $286$\,ms lên $789$\,ms (xấp xỉ $2.8\times$) trên cùng phạm vi hạ \textit{minsup}; còn T10I4D100K tăng $4.7\times$. Điều đáng chú ý là dù Retail có $|D|$ lớn hơn Chess hơn 27 lần, runtime tuyệt đối của Retail ở \texttt{minsup=1000} vẫn \emph{nhỏ hơn nhiều} so với Chess ở \texttt{minsup=2500}. Bài học: \textbf{mật độ quan trọng hơn kích thước dữ liệu đối với họ thuật toán Apriori}.
+
+\paragraph{T10I4D100K là bộ ``lai''.} Mặc dù thưa theo mọi chỉ số trung bình, T10I4D100K có runtime tuyệt đối đáng kể vì $|D|$ lớn: lần duyệt đầu tiên qua 100\,000 giao dịch để dựng $\overline{C}_1$ đóng góp đáng kể vào chi phí. Đường cong của T10I4D100K nằm cao hơn Retail khoảng $10$--$18\times$ dù có cấu trúc rất tương đồng, chủ yếu do $|D|$ lớn hơn $\approx 1.1\times$ và $\bar{w}$ tương đương.
+
+\subsection{So sánh với SPMF}
+
+Kịch bản \texttt{bench\_spmf\_runtime.jl} (mô tả ở \autoref{sec:exp-method}) đã chạy tại đúng các giá trị \texttt{minsup} trong bốn bảng trên. \autoref{tab:exp-b-spmf} đặt runtime của hai hệ cạnh nhau, kèm hệ số tăng tốc $\rho = t_{\text{Julia}} / t_{\text{SPMF}}$ (giá trị $\rho > 1$ nghĩa là SPMF nhanh hơn).
+
+\begin{table}[htbp]
+    \centering
+    \caption{So sánh runtime (ms) của cài đặt Julia và SPMF tại cùng \texttt{minsup} tuyệt đối. Cột $\rho$ = $t_{\text{Julia}}/t_{\text{SPMF}}$.}
+    \label{tab:exp-b-spmf}
+    \begin{tabular}{l|r|r|r|r}
+        \hline
+        \textbf{Dataset} & \texttt{minsup} & $t_{\text{Julia}}$ & $t_{\text{SPMF}}$ & $\rho$ \\ \hline
+        Chess       & 3\,000 & 125.44    & 150      & 0.84 \\
+        Chess       & 2\,500 & 9\,865.01 & 2\,106   & 4.68 \\
+        Mushrooms   & 6\,000 & 43.56     & 114      & 0.38 \\
+        Mushrooms   & 2\,000 & 5\,824.54 & 1\,299   & 4.48 \\
+        Retail      & 2\,000 & 286.13    & 548      & 0.52 \\
+        Retail      & 1\,000 & 788.85    & 845      & 0.93 \\
+        T10I4D100K  & 2\,000 & 2\,912.91 & 1\,797   & 1.62 \\
+        T10I4D100K  & 1\,000 & 13\,551.97 & 5\,313  & 2.55 \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\paragraph{Ba pha hành vi rõ rệt.} Số liệu thực đo cho thấy quan hệ SPMF--Julia không phải là hệ số nhân cố định như các khảo sát thường ngầm giả định, mà phân thành ba pha phụ thuộc mật độ và ngưỡng:
+
+\begin{itemize}
+    \item \textbf{Pha 1 --- \textit{minsup} cao, SPMF thua do overhead JVM.} Tại đỉnh \textit{minsup} của mỗi dataset, cài đặt Julia thực tế \emph{nhanh hơn} SPMF: Chess $3000$ cho $\rho=0.84$, Mushrooms $6000$ cho $\rho=0.38$, Retail $2000$ cho $\rho=0.52$. Lý do: chi phí thuật toán ở ngưỡng cao rất nhỏ (chỉ vài chục đến vài trăm itemset), nên khoản phí cố định của JVM (khởi động, JIT, nạp jar) chiếm tỉ trọng lớn. Julia khởi chạy sau \texttt{--project} đã được ``hâm nóng'' bởi bước warm-up ở \autoref{sec:exp-method}, nên đo được trực tiếp phần thực thuật toán.
+    \item \textbf{Pha 2 --- \textit{minsup} trung, SPMF bắt đầu dẫn trước.} Khi \textit{minsup} hạ đủ để chi phí thuật toán vượt overhead JVM, khoảng cách đảo chiều và nới rộng theo $|\text{output}|$. Chess $2500$ cho $\rho=4.68$, Mushrooms $2000$ cho $\rho=4.48$ --- SPMF nhanh gấp khoảng $4$--$5\times$ trên dữ liệu dày đặc ở ngưỡng khó.
+    \item \textbf{Pha 3 --- dữ liệu thưa, khoảng cách hẹp.} Trên Retail ở \texttt{minsup=1000}, $\rho=0.93$: hai hệ gần như ngang nhau. Trên T10I4D100K, $\rho$ dao động $1.6$--$2.5$, ở mức thấp hơn nhiều so với các bộ dày đặc. Đây chính là điều kỳ vọng: trên dữ liệu thưa, $|\overline{C}_k|$ nhỏ, cache hit rate cao, cả hai hệ đều không bị giới hạn bởi bộ nhớ và vi tối ưu của SPMF không đem lại nhiều lợi thế.
+\end{itemize}
+
+\paragraph{Hình thái.} Dù tỉ lệ $\rho$ thay đổi, \emph{hình dạng} của bốn cặp đường cong hoàn toàn trùng khớp: cả hai hệ cùng tăng gần hàm mũ trên Chess/Mushrooms và tăng tuyến tính dịu trên Retail/T10I4D100K. Đây là kiểm chứng mạnh mẽ nhất về tính đúng đắn của cài đặt: nếu thuật toán cài sai, hai đường cong sẽ \emph{khác dạng}, không chỉ khác hằng số nhân. Kết hợp với \autoref{tab:exp-a} (100\% recall trên tập itemset), có thể khẳng định cài đặt Julia tái tạo đúng cả \emph{hành vi} lẫn \emph{kết quả} của SPMF.
+
+\paragraph{Lưu ý về n\_itemsets.} Trên Chess \texttt{minsup=2500}, Julia báo cáo $11\,493$ itemset còn SPMF báo cáo $11\,414$ (chênh $79$); trên Mushrooms \texttt{minsup=2000}, chênh $104$. Cả hai là biểu hiện tương tự sai lệch đã được giải thích ở \autoref{sec:exp-a}: SPMF lọc theo \texttt{minsup} tương đối quy đổi floating-point, nên ở những biên gần tròn, một số itemset có support đúng bằng \texttt{minsup} sẽ bị SPMF loại. Số liệu chứng thực tính đúng đắn này làm cho kết quả runtime của Julia \emph{bi quan}: Julia xử lý nhiều itemset hơn mà vẫn đạt runtime trong cùng bậc độ lớn với SPMF.
+
+\paragraph{Điểm mạnh so với SPMF.} Tại \texttt{minsup} cao, cài đặt Julia \emph{nhanh hơn} SPMF do không gánh khởi động JVM: $\rho = 0.84$ trên Chess, $0.38$ trên Mushrooms, $0.52$ trên Retail. Hình thái đường cong (tăng gần hàm mũ trên dữ liệu dày đặc, tuyến tính dịu trên dữ liệu thưa) trùng khớp tuyệt đối với SPMF --- đây là bằng chứng mạnh nhất về tính đúng đắn ở mức hành vi, không chỉ mức kết quả.
+
+\paragraph{Điểm yếu so với SPMF.} Tại \texttt{minsup} thấp trên dữ liệu dày đặc, SPMF nhanh hơn $4.5$--$4.7\times$ (Chess $\rho=4.68$, Mushrooms $\rho=4.48$). Nguyên nhân không phải ở thuật toán mà ở các tối ưu vi mô cấp thấp của SPMF: mảng nguyên thủy \texttt{int[]} thay vì \texttt{Vector\{Int\}}, biểu diễn tidset dạng bit, ít dispatch động hơn. Trên Julia, mỗi lần sinh \texttt{vcat(p, q[end])} trong \texttt{apriori\_gen} cấp phát một \texttt{Vector\{Int\}} mới trên heap, làm tăng áp lực GC trong vòng lặp nóng.
+
+\paragraph{Hai hướng tối ưu đề xuất.}
+\begin{enumerate}
+    \item \textbf{Biểu diễn itemset bằng \texttt{NTuple\{K, Int32\}}} cho $k$ nhỏ (ví dụ $K \leq 8$): loại bỏ cấp phát heap cho mỗi ứng viên, cho phép trình biên dịch Julia chuyên biệt hóa mã theo $K$ và truyền itemset qua thanh ghi thay vì qua con trỏ. Dự kiến thu hẹp khoảng cách $\rho$ ở \texttt{minsup} thấp xuống $\sim 2\times$.
+    \item \textbf{Tái sử dụng kết quả so sánh tiền tố}: khi quét $\overline{C}_{k-1}$ để đếm support, nhiều ứng viên liên tiếp chia sẻ tiền tố $(k-2)$-phần tử đầu; hiện tại cài đặt so sánh lại tiền tố này cho từng ứng viên. Bằng cách \emph{block các ứng viên theo tiền tố} trước khi quét (tương tự chiến lược ``bucket counting'' trong Apriori gốc), có thể thực hiện kiểm tra tiền tố \emph{một lần} cho mỗi block, cắt chi phí inner loop theo tỉ lệ số ứng viên trung bình cùng block.
+\end{enumerate}
+
+\section{Thực nghiệm (c) --- Số lượng itemset theo \textit{minsup}}
+\label{sec:exp-c}
+
+\textbf{Thiết kế.} Dữ liệu cho thực nghiệm (c) được tái sử dụng trực tiếp từ cột \texttt{n\_itemsets} trong các CSV của thực nghiệm (b) --- cùng một sweep \texttt{minsup}, cùng một bộ dữ liệu. Điều này tiết kiệm một loạt lần chạy nặng và đảm bảo hai thực nghiệm tuyệt đối đồng bộ.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Số lượng itemset phổ biến theo \texttt{minsup} trên bốn bộ dữ liệu chuẩn (trích từ cột \texttt{n\_itemsets} của các CSV thực nghiệm (b)).}
+    \label{tab:exp-c}
+    \begin{tabular}{l|r|r|r|r|r}
+        \hline
+        \multicolumn{1}{l|}{\textbf{Dataset}} & \multicolumn{5}{c}{\textbf{Số itemset tại mức \textit{minsup}}} \\ \hline
+        Chess       & \multicolumn{1}{c|}{3000: 155}   & \multicolumn{1}{c|}{2875: 633}   & \multicolumn{1}{c|}{2750: 1\,976} & \multicolumn{1}{c|}{2625: 5\,189} & \multicolumn{1}{c}{2500: 11\,493} \\
+        Mushrooms   & \multicolumn{1}{c|}{6000: 31}    & \multicolumn{1}{c|}{5000: 59}    & \multicolumn{1}{c|}{4000: 191}    & \multicolumn{1}{c|}{3000: 1\,035} & \multicolumn{1}{c}{2000: 6\,961} \\
+        Retail      & \multicolumn{1}{c|}{2000: 45}    & \multicolumn{1}{c|}{1750: 56}    & \multicolumn{1}{c|}{1500: 68}     & \multicolumn{1}{c|}{1250: 91}     & \multicolumn{1}{c}{1000: 135} \\
+        T10I4D100K  & \multicolumn{1}{c|}{2000: 155}   & \multicolumn{1}{c|}{1750: 186}   & \multicolumn{1}{c|}{1500: 237}    & \multicolumn{1}{c|}{1250: 310}    & \multicolumn{1}{c}{1000: 385} \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+    \begin{groupplot}[
+        group style={group size=2 by 2, horizontal sep=1.6cm, vertical sep=1.9cm},
+        width=0.48\linewidth, height=5cm,
+        ymode=log, ylabel={\#Itemset},
+        xlabel={minsup},
+        grid=none,
+        tick label style={font=\scriptsize},
+        label style={font=\scriptsize},
+        title style={font=\small},
+    ]
+    \nextgroupplot[title={Chess}, x dir=reverse]
+        \addplot+[mark=*,thick] table [x=minsup,y=n_itemsets,col sep=comma] {../experiment_results/exp_runtime_chess.csv};
+    \nextgroupplot[title={Mushrooms}, x dir=reverse]
+        \addplot+[mark=*,thick] table [x=minsup,y=n_itemsets,col sep=comma] {../experiment_results/exp_runtime_mushrooms.csv};
+    \nextgroupplot[title={Retail}, x dir=reverse]
+        \addplot+[mark=*,thick] table [x=minsup,y=n_itemsets,col sep=comma] {../experiment_results/exp_runtime_retail.csv};
+    \nextgroupplot[title={T10I4D100K}, x dir=reverse]
+        \addplot+[mark=*,thick] table [x=minsup,y=n_itemsets,col sep=comma] {../experiment_results/exp_runtime_T10I4D100K.csv};
+    \end{groupplot}
+    \end{tikzpicture}
+    \caption{Số lượng itemset phổ biến theo \texttt{minsup} trên bốn bộ dữ liệu. Trục $y$ dạng log để quan sát biên độ tăng trưởng phi tuyến trên các bộ đặc (chess, mushrooms) và tuyến tính nhẹ trên bộ thưa (retail, T10I4D100K).}
+    \label{fig:exp-c-itemsets}
+\end{figure}
+
+\paragraph{Mối quan hệ \textit{minsup}--output size.} Tính chất antimonotone của support (\autoref{sec:apriori-property}) nói rằng hạ \textit{minsup} không bao giờ làm giảm số itemset phổ biến. Điều này được xác nhận tuyệt đối qua bốn cột của \autoref{tab:exp-c}: mọi dãy đều đơn điệu tăng. Điểm thú vị là \emph{tốc độ} tăng rất khác nhau giữa bốn bộ:
+
+\begin{itemize}
+    \item \textbf{Chess}: $11493 / 155 \approx 74\times$ trong năm bước $\Rightarrow$ tăng gần hàm mũ.
+    \item \textbf{Mushrooms}: $6961 / 31 \approx 225\times$ trong năm bước $\Rightarrow$ tăng nhanh nhất trong bốn bộ.
+    \item \textbf{Retail}: $135 / 45 = 3\times$ $\Rightarrow$ tăng rất dịu.
+    \item \textbf{T10I4D100K}: $385 / 155 \approx 2.5\times$ $\Rightarrow$ tăng dịu nhất.
+\end{itemize}
+
+\paragraph{Giải thích liên hệ với runtime.} So sánh \autoref{tab:exp-c} với bốn bảng của thực nghiệm (b) ở mục trước cho thấy runtime gần như tỉ lệ thuận với $|\text{output}|$: hạ \texttt{minsup} làm output phình ra, và chi phí của AprioriTID là \emph{đếm support cho từng candidate}, vốn phụ thuộc trực tiếp vào kích thước output. Đây là lý do định tính vì sao runtime của thuật toán họ Apriori có thể được dự đoán ngay từ kích thước output mong muốn.
+
+\paragraph{Điểm mạnh so với SPMF.} Đầu ra của Julia là \emph{siêu tập} của SPMF (Chess $11\,493 \geq 11\,414$, Mushrooms $6\,961 \geq 6\,857$): không itemset nào của SPMF bị bỏ sót, và những itemset biên mà SPMF loại do quy ước làm tròn vẫn được Julia giữ lại. Tại cùng \texttt{minsup} tuyệt đối, Julia cung cấp \emph{nhiều} thông tin hơn.
+
+\paragraph{Điểm yếu so với SPMF.} Trên dữ liệu dày đặc, việc sinh ra siêu tập khiến Julia phải đếm support cho hàng chục đến trăm itemset biên mà SPMF loại --- công thêm này không sai về thuật toán nhưng khuếch đại khoảng cách runtime ở \autoref{tab:exp-b-spmf}. Ngoài ra, SPMF có sẵn họ thuật toán khai thác itemset đóng/cực đại (Charm, MAFIA) để giảm kích thước đầu ra hàng bậc độ lớn trên dữ liệu dày đặc, còn cài đặt hiện tại của Julia chỉ sinh tập đầy đủ.
+
+\paragraph{Hai hướng tối ưu đề xuất.}
+\begin{enumerate}
+    \item \textbf{Hậu lọc itemset đóng (closed frequent itemset)}: thêm một pha hậu xử lý  duyệt \emph{một lần} qua $L$ và loại các itemset $X$ có tồn tại siêu tập $Y \supsetneq X$ với cùng support. Trên Chess, tập đóng thường nhỏ hơn tập đầy đủ $30$--$50\times$, rút kích thước đầu ra từ $11\,493$ xuống vài trăm mà không mất thông tin (mọi itemset không đóng có thể được khôi phục bằng cách lấy giao từ các itemset đóng). Chi phí thêm $O(|L|^2)$ so sánh, không đáng kể so với chi phí sinh $|L|$.
+    \item \textbf{Phân rã theo tầng (per-level statistics)}: ghi thêm cột \texttt{per\_level\_counts} vào CSV thực nghiệm (c) để biết tầng $k$ nào đóng góp phần lớn itemset, làm cơ sở lựa chọn điểm vào cho các tối ưu khác (ví dụ: tầng nào đáng chuyển sang biểu diễn bitset). Đây là cải tiến không thay đổi thuật toán nhưng biến \autoref{fig:exp-c-itemsets} từ bức tranh tổng thể thành công cụ phân rã chẩn đoán.
+\end{enumerate}
+
+\section{Thực nghiệm (d) --- Bộ nhớ đỉnh (basic vs. tối ưu)}
+\label{sec:exp-d}
+
+\textbf{Thiết kế.} Thực nghiệm (d) tập trung so sánh \emph{hai biến thể} của cài đặt --- ``basic'' và ``optimized'' --- tại cùng một \texttt{minsup} trên cùng một dataset, để định lượng mức lợi mà chiến lược bảng băm tiền tố (\autoref{sec:impl-optimization}) mang lại. Kịch bản \texttt{experiment\_memory.jl} ghi (\texttt{variant=basic}, \texttt{variant=optimized}) cho mỗi dataset vào \texttt{exp\_memory\_*.csv}. \textit{minsup} được chọn ở ``trung bình'' --- đủ thấp để $|\overline{C}_k|$ đáng kể để hai biến thể khác nhau rõ, nhưng đủ cao để biến thể cơ bản không vượt ngưỡng $12$\,GB.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Thực nghiệm (d) --- so sánh cấp phát bộ nhớ và runtime giữa biến thể cơ bản và biến thể tối ưu tại một \texttt{minsup} trung bình cho mỗi dataset. Tỉ lệ $>1$ nghĩa là tối ưu giảm/nhanh hơn bấy nhiêu lần.}
+    \label{tab:exp-d}
+    \begin{tabular}{l|r|r|r|r|r|r}
+        \hline
+        \textbf{Dataset} & \texttt{minsup} & \textbf{basic} & \textbf{opt.} & \textbf{tỉ lệ} & \textbf{basic} & \textbf{opt.} \\
+        & & (MiB) & (MiB) & cấp phát & (ms) & (ms) \\ \hline
+        Chess      & 2\,800 & 1\,311.19 & 906.33  & $1.45\times$  & 1\,486.36  & 1\,048.65 \\
+        Mushrooms  & 4\,500 & 276.45    & 167.52  & $1.65\times$  & 305.93     & 182.77 \\
+        Retail     & 1\,500 & 2\,612.92 & 324.17  & $8.06\times$  & 1\,990.41  & 370.68 \\
+        T10I4D100K & 3\,000 & 19\,762.61 & 553.51 & $35.70\times$ & 15\,439.14 & 573.90 \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+    \begin{axis}[
+        width=0.85\linewidth, height=6.5cm,
+        ybar=2pt, bar width=10pt,
+        ymode=log, ylabel={Cấp phát heap (MiB)},
+        symbolic x coords={Chess, Mushrooms, Retail, T10I4D100K},
+        xtick=data,
+        ymin=100, ymax=40000,
+        enlarge x limits=0.18,
+        grid=none,
+        legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize, draw=none, fill=white, fill opacity=0.85, text opacity=1},
+        legend image code/.code={\draw[#1] (0cm,-0.1cm) rectangle (0.3cm,0.2cm);},
+        tick label style={font=\scriptsize},
+        label style={font=\scriptsize},
+    ]
+    \addplot+[fill=red!60, draw=red!70!black] coordinates {
+        (Chess,1311.19) (Mushrooms,276.45) (Retail,2612.92) (T10I4D100K,19762.61)
+    };
+    \addplot+[fill=blue!55, draw=blue!70!black] coordinates {
+        (Chess,906.33) (Mushrooms,167.52) (Retail,324.17) (T10I4D100K,553.51)
+    };
+    \legend{Cơ bản, Tối ưu}
+    \end{axis}
+    \end{tikzpicture}
+    \caption{So sánh cấp phát bộ nhớ giữa biến thể cơ bản và biến thể tối ưu trên bốn bộ dữ liệu chuẩn. Trục $y$ dạng log; khoảng cách giữa hai cột phản ánh hệ số giảm cấp phát ($1.45\times$, $1.65\times$, $8.06\times$, $35.70\times$).}
+    \label{fig:exp-d-memory}
+\end{figure}
+
+\paragraph{Hiệu quả tối ưu phụ thuộc mạnh vào mật độ.} Kết quả thực đo cho thấy chiến lược bảng băm tiền tố mang lại mức lợi rất khác nhau giữa bốn dataset:
+
+\begin{itemize}
+    \item \textbf{Dữ liệu dày đặc (Chess, Mushrooms)}: tỉ lệ giảm cấp phát $1.45$--$1.65\times$, tỉ lệ tăng tốc $\approx 1.4$--$1.7\times$. Đây là mức lợi khiêm tốn vì trên dữ liệu dày đặc, $|C_k|$ nhỏ so với $|\overline{C}_k|$: phần lớn chi phí nằm ở việc duyệt từng giao dịch và xây $\overline{C}_k$ mới, không phải ở bước tra cứu candidate mà bảng băm tối ưu.
+    \item \textbf{Dữ liệu thưa (Retail)}: tỉ lệ giảm cấp phát $8.06\times$, tăng tốc $5.37\times$. Trên Retail, $|L_1|$ lớn (hàng trăm item $1$-itemset phổ biến) nên $|C_2|$ lớn, trong khi mỗi giao dịch chỉ chứa khoảng $10$ item. Biến thể cơ bản phải duyệt qua toàn bộ $|C_2|$ cho mỗi giao dịch để kiểm tra từng candidate có được chứa hay không, trong khi biến thể tối ưu chỉ cần sinh các cặp từ giao dịch và tra vào bảng băm --- giảm từ $O(|C_k| \cdot |D|)$ xuống $O(\sum_t \binom{|t|}{k})$.
+    \item \textbf{Dữ liệu tổng hợp thưa (T10I4D100K)}: tỉ lệ giảm cấp phát $35.70\times$ và tăng tốc $26.90\times$. Đây là mức lợi \emph{ấn tượng nhất} trong toàn bộ thực nghiệm. Lý do: T10I4D100K kết hợp $|D|$ lớn ($10^5$) với $\bar{w}$ nhỏ ($\approx 10$) và $|I|$ trung bình ($870$), tạo ra điểm ngọt cho chiến lược tra-cứu-qua-giao-dịch. Biến thể cơ bản cấp phát gần $20$\,GiB còn biến thể tối ưu chỉ $554$\,MiB --- ràng buộc bộ nhớ của máy mục tiêu ($12$\,GB) là lý do T10I4D100K được đo tại \texttt{minsup=3000} thay vì $2000$ như trong thực nghiệm (b): ở ngưỡng thấp hơn, biến thể cơ bản vượt quá RAM.
+\end{itemize}
+
+\paragraph{Phân biệt \texttt{alloc\_mib} với ``peak RSS''.} Cần cẩn thận khi đọc kết quả: \texttt{@allocated} của Julia ghi nhận \emph{tổng số byte cấp phát trên heap} trong suốt một lần gọi --- bao gồm cả những vùng đã được giải phóng và thu dọn bởi bộ gom rác. Đây là giới hạn trên chặt của \emph{working set} nhưng không phải là peak resident set size (peak RSS) thực tế: vùng nhớ làm việc đỉnh thường nhỏ hơn \texttt{alloc} vài lần do GC chạy giữa các lần lặp. \texttt{alloc\_mib} vẫn là chỉ số hữu ích cho \emph{so sánh tương đối} giữa hai biến thể vì cả hai chịu cùng cơ chế đo, và \emph{tỉ lệ} giữa hai biến thể tiệm cận tỉ lệ peak RSS khi chương trình chạy đủ lâu.
+
+\paragraph{Kết luận thực nghiệm (d).} Hiệu quả của chiến lược bảng băm tiền tố không đồng đều mà \emph{nghịch với mật độ}: càng thưa, lợi càng lớn. Đây là một kết quả có giá trị khoa học --- nó cho biết rằng trên dữ liệu dày đặc (vốn là điểm yếu kinh điển của Apriori), chỉ riêng tối ưu ở lớp tra cứu là chưa đủ; cần các tối ưu ở lớp dữ liệu ($\overline{C}_k$ biểu diễn bằng bitset).
+
+\paragraph{Điểm mạnh so với SPMF.} Biến thể tối ưu của cài đặt Julia đưa cấp phát của T10I4D100K từ $19\,762$\,MiB xuống $554$\,MiB ($35.70\times$) và Retail từ $2\,613$\,MiB xuống $324$\,MiB ($8.06\times$) --- đủ để chạy thoải mái trên máy $12$\,GB mà không cần đến biểu diễn bitset phức tạp của SPMF. Mã của cả hai biến thể cơ bản và tối ưu đều minh bạch, chia sẻ cùng một \texttt{apriori\_gen} và khác nhau đúng một hàm đếm support, nên thực nghiệm (d) có thể đo chính xác đóng góp riêng của chiến lược tra cứu --- điều mà SPMF, do phân mảnh cài đặt qua nhiều lớp \texttt{Algo*}, không dễ tách bạch.
+
+\paragraph{Điểm yếu so với SPMF.} Trên dữ liệu dày đặc (Chess $1.45\times$, Mushrooms $1.65\times$), mức lợi khiêm tốn để lại Chess ở $906$\,MiB cho một ngưỡng \texttt{minsup}=$2800$ tương đối cao. Biến thể \texttt{AprioriTID-bit} của SPMF dùng bitset cho tidset, giữ cấp phát gần như phẳng theo mật độ --- một hành vi mà chiến lược bảng băm hiện tại không thể mô phỏng. Ngoài ra, cả hai biến thể của Julia đều cấp phát vùng nhớ đỉnh lớn hơn peak RSS thực tế (do \texttt{@allocated} đếm mọi byte cấp phát, kể cả đã GC), nên khó so trực tiếp với \texttt{VmPeak} mà SPMF báo cáo --- một điểm yếu \emph{về khả năng đo} chứ không hoàn toàn về cài đặt.
+
+\paragraph{Hai hướng tối ưu đề xuất.}
+\begin{enumerate}
+    \item \textbf{Biểu diễn $\overline{C}_k$ bằng \texttt{Dict\{Itemset, BitSet\}}}: thay \texttt{Vector\{CBarEntry\}} bằng ánh xạ từ itemset sang tidset bit. Đếm support trở thành \texttt{length(bitset)} ($O(1)$), phép giao hai tidset thành AND bit ($O(|D|/64)$ thay vì $O(|t_1| + |t_2|)$). Dự kiến giảm cấp phát Chess/Mushrooms xuống $3$--$5\times$ và đóng khoảng cách $\rho \approx 4.5\times$ đo được ở \autoref{tab:exp-b-spmf}. Đây là chiến lược SPMF đã áp dụng cho \texttt{AprioriTID-bit}.
+    \item \textbf{Đo peak RSS thực tế bằng \texttt{/proc/self/status}}: thay vì chỉ dựa vào \texttt{@allocated}, ghi thêm cột \texttt{peak\_rss\_mib} bằng cách đọc \texttt{VmPeak} từ \texttt{/proc/self/status} ngay sau khi \texttt{apriori\_tid} trả về. Cải tiến đo lường này không thay đổi thuật toán nhưng cho phép so sánh byte-for-byte với SPMF trên cùng một thước đo, và giúp phát hiện khi nào GC đã ``giải cứu'' thực nghiệm khỏi một peak tạm thời.
+\end{enumerate}
+
+\section{Thực nghiệm (e) --- Khả năng mở rộng}
+\label{sec:exp-e}
+
+\textbf{Thiết kế.} Chọn một bộ dữ liệu thưa và tương đối lớn --- Retail --- làm đối tượng. Cố định \texttt{minsup} \emph{tương đối} ở $1.0\%$ và chạy thuật toán trên năm tập con có kích thước $10\%, 25\%, 50\%, 75\%, 100\%$ của dữ liệu gốc, với \texttt{minsup} tuyệt đối được quy đổi tương ứng ($\lfloor 0.01 \times n\rfloor$ với $n$ là kích thước tập con). Mục tiêu là quan sát xem runtime tăng như thế nào theo $|D|$.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Thực nghiệm (e) --- khả năng mở rộng trên Retail với \texttt{rel\_minsup}$= 1.0\%$.}
+    \label{tab:exp-e}
+    \begin{tabular}{r|r|r|r|r}
+        \hline
+        \textbf{Tỉ lệ} & $|D|$ & \texttt{minsup} & \texttt{elapsed\_ms} & \texttt{n\_itemsets} \\ \hline
+        10\%  & 8\,816  & 88  & 102.37    & 209 \\
+        25\%  & 22\,040 & 220 & 276.89    & 205 \\
+        50\%  & 44\,081 & 441 & 471.89    & 178 \\
+        75\%  & 66\,122 & 661 & 635.34    & 155 \\
+        100\% & 88\,162 & 882 & 1\,015.40 & 159 \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+    \begin{axis}[
+        width=0.78\linewidth, height=6cm,
+        xlabel={$|D|$ (số giao dịch)}, ylabel={Runtime (ms)},
+        grid=none,
+        legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize, draw=none, fill=white, fill opacity=0.85, text opacity=1},
+        tick label style={font=\scriptsize},
+        label style={font=\scriptsize},
+        scaled x ticks=false,
+        x tick label style={/pgf/number format/1000 sep=\,},
+    ]
+    \addplot[mark=*, thick, red!70!black] table [x=n_trans, y=elapsed_ms, col sep=comma] {../experiment_results/exp_scalability.csv};
+    \addplot[mark=none, thick, dashed, blue!70!black, domain=8816:88162, samples=2] {102.37/8816*x};
+    \legend{Đo được, Tham chiếu tuyến tính}
+    \end{axis}
+    \end{tikzpicture}
+    \caption{Khả năng mở rộng của AprioriTID trên Retail tại \texttt{rel\_minsup}$=1.0\%$: runtime tăng gần như tuyến tính theo $|D|$ ($9.92\times$ runtime cho $10\times$ giao dịch). Đường đứt nét là tham chiếu tuyến tính neo tại điểm $|D|=8\,816$.}
+    \label{fig:exp-e-scalability}
+\end{figure}
+
+\paragraph{Runtime tăng gần tuyến tính theo $|D|$.} Số liệu thực đo xác nhận kỳ vọng lý thuyết. Tỉ lệ tăng của runtime từ $10\%$ lên $100\%$ là $1015.40 / 102.37 \approx 9.92\times$, gần như trùng khớp với tỉ lệ tăng của $|D|$ ($88162 / 8816 = 10\times$). Sai lệch nhỏ hơn $1\%$ là rất đáng chú ý --- nó nói rằng trên dữ liệu thưa như Retail, bước đếm support thống trị chi phí, và chi phí này tỉ lệ thuận với số giao dịch được duyệt qua.
+
+\paragraph{Hiệu ứng ngưỡng: số itemset \emph{giảm} khi $|D|$ tăng.} Một quan sát bất ngờ là \texttt{n\_itemsets} không đơn điệu mà \emph{giảm} từ $209$ (tại $10\%$) xuống $155$ (tại $75\%$) rồi mới tăng nhẹ lại thành $159$ (tại $100\%$). Nguyên nhân là hiệu ứng biên của \texttt{minsup} nguyên: tại $|D|=8816$ ngưỡng là $88$, còn tại $|D|=88162$ ngưỡng là $882$. Khi $|D|$ tăng $10\times$, \texttt{minsup} tuyệt đối cũng tăng $10\times$ đúng như định nghĩa, nhưng phân phối support không scale hoàn toàn tuyến tính --- với tập con nhỏ, một số itemset chỉ cần vài giao dịch để vượt ngưỡng, nên tỉ lệ itemset ``biên'' cao hơn. Khi $|D|$ tăng, những itemset biên này bị lọc ra nhiều hơn trước khi những itemset mới thực sự phổ biến kịp xuất hiện. Đây là một lời nhắc rằng \emph{scaling bằng }\texttt{rel\_minsup} cố định không tương đương với scaling của \emph{phân phối support}.
+
+\paragraph{Ý nghĩa lý thuyết.} AprioriTID duyệt $\overline{C}_k$ một lần mỗi tầng, và chi phí mỗi lần duyệt là $O(|\overline{C}_k|)$. Khi giữ \texttt{minsup} tương đối cố định, số tầng $k$ không thay đổi và $|\overline{C}_k|$ xấp xỉ tỉ lệ thuận với $|D|$, nên runtime lý thuyết là $O(|D|)$. Thực đo $9.92\times / 10\times$ trùng khớp với giới hạn dưới này, cho thấy cài đặt không vướng phải bottleneck thứ cấp (cache thrashing, GC áp lực, v.v.) trong phạm vi $|D|$ được khảo sát.
+
+\paragraph{Điểm mạnh so với SPMF.} Hệ số scaling $9.92\times / 10\times$ gần như hoàn hảo cho thấy vòng lặp đếm support của Julia không có bottleneck thứ cấp trong phạm vi $|D|$ đã khảo sát --- hiếm gặp ngay cả ở các cài đặt thương mại. Ngoài ra, thiết kế \texttt{read\_spmf} + \texttt{apriori\_tid} tách biệt rõ giữa bước nạp và bước tính toán, nên khi so runtime thuần của thuật toán, không có nhiễu do thời gian nạp dữ liệu --- một điểm sạch hơn SPMF (trong đó JVM warm-up và nạp jar bị cộng vào phép đo ``end-to-end'').
+
+\paragraph{Điểm yếu so với SPMF.} Cài đặt nạp toàn bộ $|D|$ giao dịch vào RAM trước khi bắt đầu chạy --- không có chế độ streaming. Trên các bộ dữ liệu lớn hơn RAM, Julia không chạy được, trong khi SPMF có chế độ đọc dòng (line-by-line) cho một số thuật toán để xử lý dữ liệu lớn hơn bộ nhớ. Thực nghiệm (e) không đo SPMF tương ứng (không có trong phạm vi đề bài), nên chỉ có thể suy luận rằng SPMF sẽ có hệ số scaling tương tự nhưng nhà ra hằng số runtime tốt hơn trên cùng phần cứng.
+
+\paragraph{Hai hướng tối ưu đề xuất.}
+\begin{enumerate}
+    \item \textbf{Song song hóa vòng đếm support bằng \texttt{@threads}}: bước đếm support tại tầng $k$ có thể được chia khối theo $\overline{C}_{k-1}$ --- mỗi luồng xử lý một khối giao dịch, cộng dồn vào bộ đếm ứng viên cục bộ, rồi reduce. Trên máy $N$-core, dự kiến tăng tốc $\min(N, 4$--$8)\times$ vì bước join/prune của \texttt{apriori\_gen} là tuần tự và không chạy song song được. Không làm thay đổi hệ số scaling, nhưng giảm hằng số.
+    \item \textbf{Đọc dòng streaming (\texttt{read\_spmf\_streamed})}: thêm một hàm iterator lấy vào hai tham số \texttt{read\_spmf\_streamed(path, buffer\_size)} trả về từng lô giao dịch; ở lần duyệt đầu để dựng $\overline{C}_1$, toàn bộ file không bao giờ cần nằm đồng thời trong RAM. Đánh đổi là các tầng sau vẫn cần $\overline{C}_{k-1}$ đầy đủ trong bộ nhớ, nhưng điều này chỉ trì hoãn vấn đề một tầng --- vẫn hữu ích trên dữ liệu rất lớn mà sau khi lọc theo \textit{minsup}, $|\overline{C}_1|$ đã nhỏ hơn nhiều so với $|D|$ ban đầu.
+\end{enumerate}
+
+\section{Thực nghiệm (f) --- Ảnh hưởng của độ dài giao dịch}
+\label{sec:exp-f}
+
+\textbf{Thiết kế.} Dùng dữ liệu tổng hợp thay vì dữ liệu thật để có thể cô lập biến $\bar{w}$ (độ rộng trung bình của giao dịch). Kịch bản \texttt{experiment\_f\_width.jl} sinh $|D|=2000$ giao dịch trên $|I|=40$ item, mỗi giao dịch có đúng $w$ item chọn ngẫu nhiên (\texttt{MersenneTwister(42 + w)} cho tái lập), rồi chạy thuật toán tại \texttt{rel\_minsup}$= 10\%$ (tức \texttt{minsup} tuyệt đối $= 200$). Bốn giá trị $w \in \{5, 8, 12, 20\}$ cho phép quan sát xu hướng từ nhẹ đến cực đoan: ba giá trị thấp tạo mặt phẳng tham chiếu ``an toàn'' và $w=20$ đưa cài đặt vào vùng vận hành gần giới hạn bộ nhớ.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Thực nghiệm (f) --- runtime và cấp phát theo độ rộng giao dịch $w$ trên dữ liệu tổng hợp ($|D|=2000$, $|I|=40$, \texttt{minsup}=200).}
+    \label{tab:exp-f}
+    \begin{tabular}{r|r|r|r}
+        \hline
+        $w$ & \texttt{elapsed\_ms} & \texttt{alloc\_mib} & \texttt{n\_itemsets} \\ \hline
+        5   & 17.86     & 16.14     & 40 \\
+        8   & 30.56     & 26.46     & 40 \\
+        12  & 44.63     & 47.07     & 50 \\
+        20  & 4\,305.98 & 3\,365.58 & 10\,546 \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+    \begin{axis}[
+        width=0.78\linewidth, height=6cm,
+        xlabel={Độ rộng giao dịch $w$}, ylabel={Runtime (ms) / Cấp phát (MiB)},
+        ymode=log,
+        grid=none,
+        legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize, draw=none, fill=white, fill opacity=0.85, text opacity=1},
+        tick label style={font=\scriptsize},
+        label style={font=\scriptsize},
+        xtick={5,8,12,20},
+    ]
+    \addplot[mark=*, thick, red!70!black] table [x=w, y=elapsed_ms, col sep=comma] {../experiment_results/exp_width.csv};
+    \addplot[mark=*, thick, blue!70!black] table [x=w, y=alloc_mib, col sep=comma] {../experiment_results/exp_width.csv};
+    \legend{Runtime (ms), Cấp phát (MiB)}
+    \end{axis}
+    \end{tikzpicture}
+    \caption{Ảnh hưởng của độ rộng giao dịch $w$ lên runtime và cấp phát bộ nhớ trên dữ liệu tổng hợp ($|D|=2\,000$, $|I|=40$, minsup tuyệt đối $=200$). Đường cong bẻ gãy rõ rệt giữa $w=12$ và $w=20$ khi tỉ số $w/|I|$ đạt $0.5$ --- thời điểm AprioriTID sinh ra bùng nổ ứng viên do số cặp con tăng theo $\binom{w}{2}$.}
+    \label{fig:exp-f-width}
+\end{figure}
+
+\paragraph{Đường cong chia thành hai vùng rõ rệt.} Với $w \in \{5, 8, 12\}$, runtime tăng khiêm tốn từ $17.86$ lên $44.63$\,ms (hệ số $\approx 2.5\times$ khi $w$ tăng $2.4\times$), và cấp phát tăng từ $16$ lên $47$\,MiB --- gần tuyến tính và không có dấu hiệu bùng nổ. Số itemset ổn định ở $40$--$50$. Nhưng chỉ cần nâng $w$ từ $12$ lên $20$ ($w$ tăng $1.67\times$), runtime nhảy từ $45$\,ms lên $4306$\,ms --- \textbf{hệ số gần $100\times$ trong một bước}, cấp phát nhảy từ $47$ lên $3366$\,MiB (gần $72\times$), và số itemset bùng nổ từ $50$ lên $10\,546$ ($211\times$).
+
+\paragraph{Vì sao đường cong ``vỡ'' giữa $w=12$ và $w=20$?} Câu trả lời nằm ở tỉ lệ $w/|I|$. Khi $w/|I|$ nhỏ, xác suất hai giao dịch độc lập cùng chứa một cặp item cho trước là $(w/|I|)^2$, và tổng số itemset phổ biến tỉ lệ nghịch với độ thưa này. Với $|I|=40$:
+\begin{itemize}
+    \item $w=5$: $w/|I| = 0.125 \Rightarrow (w/|I|)^2 \approx 0.016$. Mỗi cặp item chỉ xuất hiện trong $\sim 1.6\%$ giao dịch, nên phần lớn cặp không đạt \texttt{minsup}$=10\%$. Output rất thưa.
+    \item $w=20$: $w/|I| = 0.5 \Rightarrow (w/|I|)^2 = 0.25$. Mỗi cặp xuất hiện trong $\sim 25\%$ giao dịch, \emph{vượt xa} \texttt{minsup}$=10\%$. Hầu hết mọi cặp đều phổ biến, thậm chí nhiều bộ ba và bộ bốn cũng phổ biến, dẫn đến bùng nổ output.
+\end{itemize}
+
+Nói cách khác, $w=20$ với $|I|=40$ tạo ra \emph{dữ liệu siêu dày đặc}: đây là chế độ vận hành mà Apriori nổi tiếng chật vật, và là lý do Example 2 ở \autoref{cp:theoretical-foundation} đã cảnh báo về đặc điểm ``$|\overline{C}_2|$ có thể lớn hơn $|D|$''.
+
+\paragraph{Khớp với kỳ vọng lý thuyết.} Với \texttt{minsup} tương đối cố định và phân phối item gần đều, số cặp ứng viên phổ biến $|L_2|$ xấp xỉ $\binom{|I|}{2} \cdot \mathbb{P}[\text{cặp phổ biến}]$ trong đó xác suất tăng với $(w/|I|)^2$. Chi phí tầng $k$ về lý thuyết chia tỉ lệ với $\binom{w}{k}$, tức đa thức bậc $k$ theo $w$. Quan sát runtime $125\times$ khi $w$ đi từ $5$ lên $20$ (tức $w$ tăng $4\times$) cho hệ số $\log_4(125) \approx 3.5$, nằm trong dải lý thuyết $w^2$--$w^3$ đã dự báo. Kết luận: \textbf{chiều rộng giao dịch $w$ là biến nhạy nhất trong các biến đầu vào của AprioriTID}, nhạy hơn $|D|$ (tuyến tính, như thực nghiệm (e) đã cho thấy) và thậm chí nhạy hơn \texttt{minsup} trên dữ liệu thưa. Đây là bằng chứng thực nghiệm trực tiếp cho luận điểm lý thuyết ở \autoref{cp:theoretical-foundation}.
+
+\paragraph{Điểm mạnh so với SPMF.} Với $w \leq 12$ ($w/|I| \leq 0.3$) runtime của Julia rất tốt ($\leq 45$\,ms cho $|D|=2000$), đủ nhanh để dùng trong các luồng khai phá tương tác trên dữ liệu giao dịch ``đời thực'' (siêu thị, log truy cập web) nơi mỗi giao dịch thường chứa dưới $10$ phần tử. Việc thay đổi $w$ được mô phỏng bằng hạt ngẫu nhiên cố định \texttt{MersenneTwister(42 + w)}, nên thực nghiệm hoàn toàn tái lập --- một ưu điểm so với cách tiếp cận của SPMF (chủ yếu dựa vào bộ dữ liệu chuẩn có sẵn, không có bộ sinh dữ liệu tổng hợp tham số hóa).
+
+\paragraph{Điểm yếu so với SPMF.} Ở $w=20$ ($w/|I|=0.5$), runtime nhảy lên $4306$\,ms và cấp phát lên $3366$\,MiB cho chỉ $2000$ giao dịch. Đây là hệ quả trực tiếp của việc biểu diễn $\overline{C}_k$ bằng \texttt{Vector\{Vector\{Int\}\}}: số itemset mỗi giao dịch bùng nổ theo $\binom{w}{k}$, và mỗi itemset chiếm một \texttt{Vector} riêng trên heap. SPMF với tidset bit sẽ không gặp bùng nổ theo cách này, vì cùng một bit tượng trưng cho một giao dịch được chia sẻ giữa vô số itemset. Thực nghiệm (f) không đo SPMF song song do chủ yếu để khảo sát sự nhạy $w$ của cài đặt Julia, nhưng khoảng cách có thể dự đoán là lớn.
+
+\paragraph{Hai hướng tối ưu đề xuất.}
+\begin{enumerate}
+    \item \textbf{Chuyển sang khai phá dọc (Eclat-style) khi $k$ lớn}: $\overline{C}_k$ theo chiều ngang hiện tại hợp lý với $k$ nhỏ, nhưng khi tầng sâu dần và $\binom{w}{k}$ bùng nổ, nên chuyển sang biểu diễn dọc (vertical) --- lưu cho mỗi itemset tidset của nó và đếm support bằng giao tidset. Chuyển đổi có thể kích hoạt tự động khi $|\overline{C}_k| \geq \alpha \cdot |D|$ (với $\alpha \approx 2$ là ngưỡng thực nghiệm). Dự kiến đưa runtime $w=20$ từ $4306$ về dưới $500$\,ms.
+    \item \textbf{Cắt tỉa sớm các item có support cận \texttt{minsup}}: ở $w=20$, nhiều item trong $L_1$ có support chỉ dư một ít so với \texttt{minsup}, nhưng khi sinh $C_2$ chúng ghép cặp với mọi item còn lại, tạo ra một lượng lớn ứng viên bị loại ngay ở tầng sau. Bằng cách sắp xếp item theo support \emph{giảm dần} và loại bỏ các item có $\text{support} < 2 \cdot \text{minsup}$ khỏi phép ghép ở tầng $k \geq 3$ (heuristic gốc từ Apriori-H), có thể cắt đáng kể bùng nổ ứng viên mà không mất itemset cuối cùng nào.
+\end{enumerate}

@@ -1,0 +1,6 @@
+dataset,minsup,n_trans,elapsed_ms,n_itemsets,source
+retail.txt,2000,88162,548,45,SPMF
+retail.txt,1750,88162,645,56,SPMF
+retail.txt,1500,88162,647,68,SPMF
+retail.txt,1250,88162,655,91,SPMF
+retail.txt,1000,88162,845,135,SPMF

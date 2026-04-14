@@ -1,6 +1,3 @@
-# CLI entry point for AprioriTID
-# Usage: julia --project src/main.jl <minsup> <filepath> [output_filepath]
-
 include(joinpath(@__DIR__, "structures.jl"))
 include(joinpath(@__DIR__, "utils.jl"))
 include(joinpath(@__DIR__, "algorithm", "apriori_gen.jl"))

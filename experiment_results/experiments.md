@@ -132,14 +132,16 @@ mkdir -p docs/results_chapter4
 
 **Suggested minsup sweeps** (adjust after first run if too slow or too trivial):
 
-| Dataset      | minsup values (absolute counts) |
+| Dataset      | minsup values (absolute counts) — **tuned for 12 GB / i3** |
 |--------------|---------------------------------|
-| Chess (3196 trans) | 3000, 2800, 2500, 2200, 2000, 1800, 1600 |
-| Mushroom (8124)    | 6000, 5000, 4000, 3500, 3000, 2500, 2000 |
-| Retail (88162)     | 2000, 1500, 1200, 1000, 800, 600, 500    |
-| T10I4D100K (10^5)  | 2000, 1500, 1200, 1000, 800, 600, 500    |
+| Chess (3196 trans) | 3000, 2800, 2500, 2300 |
+| Mushroom (8124)    | 6000, 5000, 4500, 4000, 3500 |
+| Retail (88162)     | 2000, 1500, 1200, 1000 |
+| T10I4D100K (10^5)  | 2500, 2000, 1500 |
 
-⚠ **The lowest minsup per dataset is the risky one.** Start the sweep from the highest minsup and let it run downward. If you see a single run take >2 minutes or RAM climb dangerously, kill it and raise that minsup.
+⚠ **The lowest minsup per dataset is the risky one.** Start the sweep from the highest minsup and let it run downward. If you see a single run take >2 minutes or RAM climb dangerously, kill it and raise that minsup. The floors above were lowered from the original `chess=1600`, `retail/T10I4D100K=500` because those values allocate 4–10 GB on this hardware. See [tests/experiment/README.md](../tests/experiment/README.md) for the authoritative version with per-run wall-time estimates.
+
+> **Note:** the rest of this document still refers to the pre-refactor test layout (`tests/bench_optimization.jl` instead of `tests/experiment/bench_optimization.jl`). Treat `tests/experiment/README.md` as the source of truth for exact commands; this file is kept as a higher-level A-to-Z narrative.
 
 **Time:** chess and T10I4D100K dominate — budget 5–15 minutes total for all 4 datasets. **RAM risk medium.**
 

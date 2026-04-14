@@ -1,0 +1,3 @@
+dataset,variant,minsup,n_trans,elapsed_ms,alloc_mib,n_itemsets
+mushrooms.txt,basic,4500,8416,305.93,276.447,117
+mushrooms.txt,optimized,4500,8416,182.77,167.52,117

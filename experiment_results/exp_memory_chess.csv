@@ -1,0 +1,3 @@
+dataset,variant,minsup,n_trans,elapsed_ms,alloc_mib,n_itemsets
+chess.txt,basic,2800,3196,1486.36,1311.19,1350
+chess.txt,optimized,2800,3196,1048.65,906.332,1350

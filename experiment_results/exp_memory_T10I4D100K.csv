@@ -1,0 +1,3 @@
+dataset,variant,minsup,n_trans,elapsed_ms,alloc_mib,n_itemsets
+T10I4D100K.txt,basic,3000,100000,15439.14,19762.61,60
+T10I4D100K.txt,optimized,3000,100000,573.9,553.512,60

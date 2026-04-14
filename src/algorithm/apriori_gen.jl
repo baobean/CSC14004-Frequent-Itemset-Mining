@@ -1,21 +1,3 @@
-# Candidate generation function for AprioriTID
-# Implements the apriori-gen function: join + prune steps
-# Requires: structures.jl to be included first
-
-"""
-    apriori_gen(L_prev_sorted::Vector{Vector{Int}}, L_prev_set::Set{Vector{Int}}) -> Vector{Candidate}
-
-Generate candidate k-itemsets from frequent (k-1)-itemsets.
-
-**Join step**: For pairs (p, q) in L_{k-1} where p[1:end-1] == q[1:end-1] and p[end] < q[end],
-create candidate [p..., q[end]].
-
-**Prune step**: Remove any candidate c if any (k-1)-subset of c is not in L_{k-1}.
-
-Arguments:
-- `L_prev_sorted`: frequent (k-1)-itemsets, sorted lexicographically
-- `L_prev_set`: same itemsets as a Set for O(1) membership lookup
-"""
 function apriori_gen(L_prev_sorted::Vector{Vector{Int}}, L_prev_set::Set{Vector{Int}})::Vector{Candidate}
     candidates = Candidate[]
     n = length(L_prev_sorted)

@@ -1,0 +1,6 @@
+dataset,minsup,n_trans,elapsed_ms,alloc_mib,n_itemsets
+chess.txt,3000,3196,125.44,120.71,155
+chess.txt,2875,3196,553.86,453.778,633
+chess.txt,2750,3196,1722.98,1444.527,1976
+chess.txt,2625,3196,4318.28,3488.92,5189
+chess.txt,2500,3196,9865.01,7491.428,11493

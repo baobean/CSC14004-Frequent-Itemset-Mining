@@ -1,0 +1,6 @@
+dataset,minsup,n_trans,elapsed_ms,n_itemsets,source
+mushrooms.txt,6000,8416,114,31,SPMF
+mushrooms.txt,5000,8416,176,59,SPMF
+mushrooms.txt,4000,8416,246,191,SPMF
+mushrooms.txt,3000,8416,455,1035,SPMF
+mushrooms.txt,2000,8416,1299,6857,SPMF
